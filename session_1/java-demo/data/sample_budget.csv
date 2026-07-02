@@ -1,0 +1,13 @@
+month,income,fixed_expenses,variable_expenses,notes
+January,5000.00,2000.00,800.00,Normal month
+February,5000.00,2000.00,1200.00,Extra variable — appliance repair
+March,4500.00,2000.00,600.00,Reduced income — unpaid leave
+April,5000.00,2000.00,0.00,Variable expenses not recorded — data gap
+May,0.00,2000.00,500.00,No income — savings rate undefined (edge case)
+June,5000.00,-200.00,800.00,Negative fixed expense — vendor refund (edge case)
+July,5000.00,2000.00,800.00,Normal month
+August,5500.00,2000.00,950.00,Bonus month
+September,5000.00,2000.00,1100.00,Back to school expenses
+October,5000.00,2000.00,700.00,Normal month
+November,5000.00,2000.00,1800.00,Holiday shopping
+December,5000.00,2000.00,2100.00,Overspending — balance goes negative
