@@ -7,7 +7,7 @@ A collection of training materials and documentation for an AI literacy program 
 | # | Session | Materials |
 |---|---------|-----------|
 | 1 | AI Literacy | [Session 1](./session_1/) |
-| 2 | Java Frameworks | Coming soon |
+| 2 | Java Frameworks | [Session 2](./session_2/) |
 | 3 | Standardization, Governance and Defensive Security | Coming soon |
 | 4 | Productivity and MCP | Coming soon |
 | 5 | Data Architecture and Memory | Coming soon |

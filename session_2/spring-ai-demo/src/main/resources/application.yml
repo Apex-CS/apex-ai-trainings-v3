@@ -1,0 +1,62 @@
+server:
+  port: 9090
+
+spring:
+  application:
+    name: spring-ai-demo
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+  # DEFAULT PROFILE = local Ollama (no API keys, no cost, works offline)
+  ai:
+    model:
+      chat: ollama            # <- provider selector when multiple starters are present
+      embedding: none
+    azure:
+      openai:
+        endpoint: https://apex-openai.openai.azure.com/
+    openai:
+      audio:
+        speech:
+          enabled: false      # prevent OpenAI speech bean creation for local/Ollama profile
+        transcription:
+          enabled: false      # prevent OpenAI transcription bean creation for local/Ollama profile
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: llama3.2
+          temperature: 0.7
+
+logging:
+  level:
+    org.springframework.ai: DEBUG   # show the tool-calling round trip in the demo
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,mappings
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0            # demo only - sample everything
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+    metrics:
+      export:
+        enabled: true
+        url: http://localhost:4318/v1/metrics
+        step: 10s
+
+spring.ai.chat.observations:
+  # PII WARNING (bridge to Topic 3): prompt/completion content logging is OFF by
+  # default on purpose. Enable ONLY in dev/demo environments:
+  log-prompt: true
+  log-completion: true

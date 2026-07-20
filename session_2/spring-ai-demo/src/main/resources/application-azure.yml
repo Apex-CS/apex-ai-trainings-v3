@@ -1,0 +1,21 @@
+# Run: AZURE_OPENAI_KEY=your-key SPRING_PROFILES_ACTIVE=azure mvn spring-boot:run
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+  ai:
+    model:
+      chat: azure-openai
+    azure:
+      openai:
+        api-key: ${AZURE_OPENAI_KEY}
+        endpoint: https://apex-openai.openai.azure.com/
+        chat:
+          options:
+            deployment-name: gpt-35-turbo
+            temperature: 0.7

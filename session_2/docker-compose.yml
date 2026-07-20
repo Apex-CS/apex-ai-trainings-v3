@@ -1,0 +1,11 @@
+# All-in-one observability backend for the demo:
+# Grafana (UI) + Tempo (traces) + Prometheus (metrics) + Loki (logs) + OTel Collector
+services:
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "4000:3000"   # Grafana UI  -> http://localhost:4000 (anonymous access enabled)
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP   <- the app exports here
+    environment:
+      - ENABLE_LOGS_ALL=false

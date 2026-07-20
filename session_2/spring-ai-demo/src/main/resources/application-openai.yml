@@ -1,0 +1,13 @@
+# Run: OPENAI_API_KEY=your-key SPRING_PROFILES_ACTIVE=openai mvn spring-boot:run
+spring:
+  autoconfigure:
+    exclude: []
+  ai:
+    model:
+      chat: openai
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7
