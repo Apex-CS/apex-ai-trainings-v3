@@ -1,0 +1,117 @@
+spring:
+  config:
+    import: file:.env[.properties]
+
+  application:
+    name: owasp-ai-assistant
+
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_HOST_PORT}/owasp_ai
+    username: owasp
+    password: owasp
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  ai:
+    model:
+      chat: none
+      embedding: none
+    vectorstore:
+      qdrant:
+        host: localhost
+        port: ${QDRANT_GRPC_HOST_PORT}
+        use-tls: false
+        initialize-schema: true
+        collection-name: owasp_documents
+
+autoconfigure_:
+  exclude:
+    - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+  databricks:
+    host: ${DATABRICKS_HOST}
+    token: ${DATABRICKS_TOKEN}
+    endpoint-name: ${LLM_ENDPOINT_NAME}
+    chat-invocation-url: ${DATABRICKS_CHAT_INVOCATION_URL:}
+    embedding-endpoint-name: ${EMBEDDING_ENDPOINT_NAME:}
+    embedding-invocation-url: ${DATABRICKS_EMBEDDINGS_URL:}
+    temperature: 0.2
+    max-tokens: 4096
+  rag:
+    enabled: true
+    chunk-size: 800
+    chunk-overlap: 150
+    top-k: 5
+  web-search:
+    enabled: true
+    max-results: 5
+  sql:
+    max-rows: 100
+  code-review:
+    max-upload-bytes: 10485760
+    max-uncompressed-bytes: 5242880
+    max-files: 200
+    max-text-chars: 500000
+  guardrails:
+    enabled: true
+    markdown:
+      location: classpath:guardrails/
+      files:
+        system-policy: SYSTEM
+        tool-usage-policy: TOOL
+        blocked-topics: INPUT
+        output-policy: OUTPUT
+        judge-rubric: JUDGE
+    output-judge:
+      enabled: false
+      max-retries: 1
+      enforcement: HARD
+      fail-open-on-error: true
+      model:
+        endpoint-name: ${JUDGE_LLM_ENDPOINT_NAME:${LLM_ENDPOINT_NAME}}
+        chat-invocation-url: ${JUDGE_DATABRICKS_CHAT_INVOCATION_URL:}
+        temperature: 0.0
+        max-tokens: 1024
+  http:
+    corporate-ca-enabled: true
+    corporate-ca-pem: classpath:nike-ca-certs-2027.pem
+  mlflow:
+    enabled: true
+    # MLFLOW_TRACKING_URI=databricks for Databricks hosted tracking; otherwise local Docker server URL
+    tracking-uri: ${MLFLOW_TRACKING_URI:http://localhost:${MLFLOW_HOST_PORT}}
+    experiment-name: ${MLFLOW_EXPERIMENT_NAME:owasp-chat}
+    # On Databricks, create the experiment in the workspace UI or set this to true
+    auto-create-experiment: ${MLFLOW_AUTO_CREATE_EXPERIMENT:true}
+
+logging:
+  level:
+    com.owasp: INFO
+    com.owasp.aiassistant.mlflow: INFO
+    org.mlflow: INFO
+    org.bsc.langgraph4j: INFO
