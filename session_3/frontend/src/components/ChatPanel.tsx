@@ -10,7 +10,7 @@ export function ChatPanel() {
       <header className="chat-header">
         <div>
           <p className="eyebrow">Example Company</p>
-          <h1>Enterprise AI Assistant</h1>
+          <h1>Java-powered Agent for Vectorized Intelligence with Enterprise Response</h1>
           <p className="subtitle">
             Finance · IT · Marketing · Sales — RAG, web search, and SQL via LangGraph4j
           </p>
