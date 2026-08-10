@@ -1,6 +1,6 @@
 spring:
   config:
-    import: file:.env[.properties]
+    import: file:./session_3/.env[.properties]
 
   application:
     name: owasp-ai-assistant
@@ -41,7 +41,7 @@ autoconfigure_:
     - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
 
 server:
-  port: 8080
+  port: 8081
 
 management:
   endpoints:
