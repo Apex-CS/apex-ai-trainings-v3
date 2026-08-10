@@ -23,7 +23,7 @@ public class OpenApiConfig {
                                 Demo sales API secured with JWT bearer tokens.
                                 Returns product catalog and customer sales records containing demo PII.
                                 Use the **Authorize** button and paste a token from \
-                                `corporate-backend-financial-api/DEMO_TOKENS.md`.
+                                `DEMO_TOKENS.md`.
                                 """)
                         .version("0.1.0")
                         .contact(new Contact().name("OWASP Demo")))

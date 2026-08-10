@@ -22,7 +22,7 @@ public class OpenApiConfig {
                         .description("""
                                 Demo IT operations API secured with JWT bearer tokens.
                                 Use the **Authorize** button and paste a token from \
-                                `corporate-backend-financial-api/DEMO_TOKENS.md`.
+                                `/DEMO_TOKENS.md`.
                                 """)
                         .version("0.1.0")
                         .contact(new Contact().name("OWASP Demo")))
@@ -33,6 +33,6 @@ public class OpenApiConfig {
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
-                                .description("Shared demo JWT from corporate-backend-financial-api/DEMO_TOKENS.md")));
+                                .description("Shared demo JWT DEMO_TOKENS.md")));
     }
 }

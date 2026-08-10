@@ -5,7 +5,7 @@ Demo Spring Boot service for the Example Company rubber duck sales catalog and c
 Runs on **port 8093** and connects to PostgreSQL database `owasp_sales`.
 
 Authentication uses the **same JWT tokens** as the financial API — see
-[corporate-backend-financial-api/DEMO_TOKENS.md](../corporate-backend-financial-api/DEMO_TOKENS.md).
+[DEMO_TOKENS.md](../DEMO_TOKENS.md).
 
 ## Prerequisites
 
