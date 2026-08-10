@@ -3,13 +3,16 @@
   <component name="CompilerConfiguration">
     <annotationProcessing>
       <profile default="true" name="Default" enabled="true" />
-      <profile name="Annotation profile for Example Company AI Assistant" enabled="true">
+      <profile name="Annotation profile for OWASP Corporate Sales API" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
+        <module name="corporate-backend-it-api" />
+        <module name="corporate-backend-financial-api" />
+        <module name="corporate-backend-sales-api" />
         <module name="ai-assistant" />
       </profile>
     </annotationProcessing>
@@ -17,6 +20,9 @@
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="ai-assistant" options="-parameters" />
+      <module name="corporate-backend-financial-api" options="-parameters" />
+      <module name="corporate-backend-it-api" options="-parameters" />
+      <module name="corporate-backend-sales-api" options="-parameters" />
     </option>
   </component>
 </project>

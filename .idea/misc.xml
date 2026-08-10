@@ -5,6 +5,9 @@
     <option name="originalFiles">
       <list>
         <option value="$PROJECT_DIR$/session_3/backend-llm/pom.xml" />
+        <option value="$PROJECT_DIR$/session_3/corporate-finance-api/pom.xml" />
+        <option value="$PROJECT_DIR$/session_3/corporate-it-api/pom.xml" />
+        <option value="$PROJECT_DIR$/session_3/corporate-sales-api/pom.xml" />
       </list>
     </option>
   </component>
