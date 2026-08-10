@@ -2,6 +2,7 @@ package com.owasp.aiassistant.web;
 
 import com.owasp.aiassistant.agent.AgentChatResult;
 import com.owasp.aiassistant.agent.ChatAgentService;
+import com.owasp.aiassistant.corporate.enums.DemoUser;
 import com.owasp.aiassistant.dto.ChatRequest;
 import com.owasp.aiassistant.dto.ChatResponse;
 import com.owasp.aiassistant.mlflow.MlflowChatTracingService;
@@ -40,11 +41,12 @@ public class ChatController {
             AgentChatResult result = chatAgentService.chat(
                     request.message(),
                     conversationId,
-                    request.codeToReview());
-            recordChatTurn(conversationId, request.message(), result, System.currentTimeMillis() - startTimeMs);
+                    request.codeToReview(),
+                    request.demoUser());
+            recordChatTurn(conversationId, request.message(), result, System.currentTimeMillis() - startTimeMs, request.demoUser());
             return ResponseEntity.ok(new ChatResponse(result.answer(), conversationId, result.warnings()));
         } catch (Exception e) {
-            recordChatError(conversationId, request.message(), System.currentTimeMillis() - startTimeMs, e);
+            recordChatError(conversationId, request.message(), System.currentTimeMillis() - startTimeMs, e, request.demoUser());
             throw e;
         }
     }
@@ -53,9 +55,10 @@ public class ChatController {
             String conversationId,
             String userMessage,
             AgentChatResult result,
-            long durationMs) {
+            long durationMs,
+            DemoUser demoUser) {
         if (mlflowChatTracingService != null) {
-            mlflowChatTracingService.recordChatTurn(conversationId, userMessage, result, durationMs);
+            mlflowChatTracingService.recordChatTurn(conversationId, userMessage, result, durationMs, demoUser);
         }
     }
 
@@ -63,9 +66,10 @@ public class ChatController {
             String conversationId,
             String userMessage,
             long durationMs,
-            Exception error) {
+            Exception error,
+            DemoUser demoUser) {
         if (mlflowChatTracingService != null) {
-            mlflowChatTracingService.recordChatError(conversationId, userMessage, durationMs, error);
+            mlflowChatTracingService.recordChatError(conversationId, userMessage, durationMs, error, demoUser);
         }
     }
 }

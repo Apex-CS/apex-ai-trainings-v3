@@ -2,7 +2,10 @@ package com.owasp.aiassistant.config;
 
 import com.owasp.aiassistant.agent.AgentWarningContext;
 import com.owasp.aiassistant.tools.AgentTools;
+import com.owasp.aiassistant.tools.FinancialApiTools;
+import com.owasp.aiassistant.tools.ItApiTools;
 import com.owasp.aiassistant.tools.ResilientToolCallback;
+import com.owasp.aiassistant.tools.SalesApiTools;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
@@ -18,9 +21,13 @@ import java.util.List;
 public class AgentConfig {
 
     @Bean
-    ToolCallbackProvider toolCallbackProvider(AgentTools agentTools) {
+    ToolCallbackProvider toolCallbackProvider(
+            AgentTools agentTools,
+            FinancialApiTools financialApiTools,
+            ItApiTools itApiTools,
+            SalesApiTools salesApiTools) {
         return MethodToolCallbackProvider.builder()
-                .toolObjects(agentTools)
+                .toolObjects(agentTools, financialApiTools, itApiTools, salesApiTools)
                 .build();
     }
 

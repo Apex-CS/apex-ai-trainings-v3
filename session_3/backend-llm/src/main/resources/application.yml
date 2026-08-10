@@ -1,6 +1,6 @@
 spring:
   config:
-    import: file:./session_3/.env[.properties]
+    import: file:.env[.properties]
 
   application:
     name: owasp-ai-assistant
@@ -41,7 +41,7 @@ autoconfigure_:
     - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
 
 server:
-  port: 8081
+  port: 8080
 
 management:
   endpoints:
@@ -85,6 +85,8 @@ app:
       files:
         system-policy: SYSTEM
         tool-usage-policy: TOOL
+        sales-pii-policy: TOOL
+        credential-exposure-policy: TOOL
         blocked-topics: INPUT
         output-policy: OUTPUT
         judge-rubric: JUDGE
@@ -108,6 +110,16 @@ app:
     experiment-name: ${MLFLOW_EXPERIMENT_NAME:owasp-chat}
     # On Databricks, create the experiment in the workspace UI or set this to true
     auto-create-experiment: ${MLFLOW_AUTO_CREATE_EXPERIMENT:true}
+  corporate-api:
+    financial-base-url: http://localhost:8091
+    it-base-url: http://localhost:8092
+    sales-base-url: http://localhost:8093
+    default-demo-user: BART_PEREZ
+    demo-tokens:
+      FULANO_SMITH: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmdWxhbm8uc21pdGgiLCJuYW1lIjoiZnVsYW5vIHNtaXRoIiwicm9sZXMiOlsiZmluYW5jaWFsLWFkbWluIiwiaXQtdXNlciIsIm1hcmtldGluZy11c2VyIiwic2FsZXMtdXNlciJdLCJpYXQiOjE3ODYzODE2MjEsImV4cCI6MTk0NDA2MTYyMX0.ZHmS9_kmfuv-E1xiQRrFBzs7kYJ_K2vS40ySYEVI8mk
+      SUTANO_DOE: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXRhbm8uZG9lIiwibmFtZSI6InN1dGFubyBkb2UiLCJyb2xlcyI6WyJzYWxlcy1hZG1pbiIsImZpbmFuY2lhbC11c2VyIiwiaXQtdXNlciIsIm1hcmtldGluZy11c2VyIl0sImlhdCI6MTc4NjM4MTYyMSwiZXhwIjoxOTQ0MDYxNjIxfQ.lugwdYSFvfihB9Cw1b6XIDJp5W2TwGS0edkORhw2IDQ
+      MENGANA_DAVIDSON: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtZW5nYW5hLmRhdmlkc29uIiwibmFtZSI6Im1lbmdhbmEgZGF2aWRzb24iLCJyb2xlcyI6WyJtYXJrZXRpbmctYWRtaW4iLCJmaW5hbmNpYWwtdXNlciIsIml0LXVzZXIiLCJzYWxlcy11c2VyIl0sImlhdCI6MTc4NjM4MTYyMSwiZXhwIjoxOTQ0MDYxNjIxfQ.k-merM-rzHfBpwN-XSAfs5_HSxiMI6QHZCLSyM6o54Y
+      BART_PEREZ: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiYXJ0LnBlcmV6IiwibmFtZSI6ImJhcnQgcGVyZXoiLCJyb2xlcyI6WyJpdC1hZG1pbiIsImZpbmFuY2lhbC11c2VyIiwibWFya2V0aW5nLXVzZXIiLCJzYWxlcy11c2VyIl0sImlhdCI6MTc4NjM4MTYyMSwiZXhwIjoxOTQ0MDYxNjIxfQ.Ft8SjODLwAAZt-XprCeT-rl-Ng6LMLl4MRZvP3ni6Nw
 
 logging:
   level:

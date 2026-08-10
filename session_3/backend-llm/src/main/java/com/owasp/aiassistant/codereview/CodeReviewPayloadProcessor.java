@@ -4,20 +4,23 @@ import com.owasp.aiassistant.config.CodeReviewProperties;
 import com.owasp.aiassistant.dto.CodeAttachment;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 @Service
 public class CodeReviewPayloadProcessor {
@@ -90,46 +93,63 @@ public class CodeReviewPayloadProcessor {
         List<String> skipped = new ArrayList<>();
         long uncompressedTotal = 0;
 
-        try (ZipInputStream zipInputStream = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
-            ZipEntry entry;
-            while ((entry = zipInputStream.getNextEntry()) != null) {
-                if (entry.isDirectory()) {
-                    continue;
-                }
+        Path tempZip = null;
+        try {
+            tempZip = Files.createTempFile("code-review-", ".zip");
+            Files.write(tempZip, zipBytes);
 
-                String normalizedPath = normalizeZipPath(entry.getName());
-                if (isDeniedPath(normalizedPath)) {
-                    skipped.add(normalizedPath + " (excluded path)");
-                    continue;
-                }
+            try (ZipFile zipFile = new ZipFile(tempZip.toFile())) {
+                Enumeration<? extends ZipEntry> entries = zipFile.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    if (entry.isDirectory()) {
+                        continue;
+                    }
 
-                if (!isAllowedTextFile(normalizedPath)) {
-                    skipped.add(normalizedPath + " (unsupported type)");
-                    continue;
-                }
+                    String normalizedPath = normalizeZipPath(entry.getName());
+                    if (isDeniedPath(normalizedPath)) {
+                        skipped.add(normalizedPath + " (excluded path)");
+                        continue;
+                    }
 
-                if (files.size() >= properties.getMaxFiles()) {
-                    skipped.add(normalizedPath + " (file limit reached)");
-                    continue;
-                }
+                    if (!isAllowedTextFile(normalizedPath)) {
+                        skipped.add(normalizedPath + " (unsupported type)");
+                        continue;
+                    }
 
-                byte[] entryBytes = readEntryBytes(zipInputStream, entry);
-                uncompressedTotal += entryBytes.length;
-                if (uncompressedTotal > properties.getMaxUncompressedBytes()) {
-                    throw new IllegalArgumentException(
-                            "Uncompressed archive exceeds maximum size of "
-                                    + properties.getMaxUncompressedBytes() + " bytes");
-                }
+                    if (files.size() >= properties.getMaxFiles()) {
+                        skipped.add(normalizedPath + " (file limit reached)");
+                        continue;
+                    }
 
-                if (isBinaryContent(entryBytes)) {
-                    skipped.add(normalizedPath + " (binary content)");
-                    continue;
-                }
+                    try (InputStream inputStream = zipFile.getInputStream(entry)) {
+                        byte[] entryBytes = readEntryBytes(inputStream, entry);
+                        uncompressedTotal += entryBytes.length;
+                        if (uncompressedTotal > properties.getMaxUncompressedBytes()) {
+                            throw new IllegalArgumentException(
+                                    "Uncompressed archive exceeds maximum size of "
+                                            + properties.getMaxUncompressedBytes() + " bytes");
+                        }
 
-                files.put(normalizedPath, new String(entryBytes, StandardCharsets.UTF_8));
+                        if (isBinaryContent(entryBytes)) {
+                            skipped.add(normalizedPath + " (binary content)");
+                            continue;
+                        }
+
+                        files.put(normalizedPath, new String(entryBytes, StandardCharsets.UTF_8));
+                    }
+                }
             }
         } catch (IOException e) {
             throw new IllegalArgumentException("Failed to read zip archive: " + e.getMessage(), e);
+        } finally {
+            if (tempZip != null) {
+                try {
+                    Files.deleteIfExists(tempZip);
+                } catch (IOException ignored) {
+                    // best-effort cleanup
+                }
+            }
         }
 
         if (files.isEmpty()) {
@@ -142,7 +162,7 @@ public class CodeReviewPayloadProcessor {
         return new ReviewBundle(paths, files, skipped);
     }
 
-    private static byte[] readEntryBytes(ZipInputStream zipInputStream, ZipEntry entry) throws IOException {
+    private static byte[] readEntryBytes(InputStream inputStream, ZipEntry entry) throws IOException {
         long declaredSize = entry.getSize();
         if (declaredSize > 0 && declaredSize > 2L * 1024 * 1024) {
             throw new IllegalArgumentException("Zip entry is too large: " + entry.getName());
@@ -152,7 +172,7 @@ public class CodeReviewPayloadProcessor {
         byte[] chunk = new byte[8192];
         long totalRead = 0;
         int read;
-        while ((read = zipInputStream.read(chunk)) >= 0) {
+        while ((read = inputStream.read(chunk)) >= 0) {
             totalRead += read;
             if (totalRead > 2L * 1024 * 1024) {
                 throw new IllegalArgumentException("Zip entry is too large: " + entry.getName());

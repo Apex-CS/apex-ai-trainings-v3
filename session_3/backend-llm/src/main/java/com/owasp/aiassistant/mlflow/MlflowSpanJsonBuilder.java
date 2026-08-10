@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.owasp.aiassistant.agent.AgentExecutionTrace;
 import com.owasp.aiassistant.agent.AgentTraceStep;
+import com.owasp.aiassistant.corporate.enums.DemoUser;
+import com.owasp.aiassistant.policy.PolicyViolationStateKeys;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -71,6 +73,7 @@ final class MlflowSpanJsonBuilder {
             long startTimeMs,
             long durationMs,
             String status,
+            DemoUser demoUser,
             ObjectMapper objectMapper) throws JsonProcessingException {
         Map<String, Object> traceInfo = new LinkedHashMap<>();
         traceInfo.put("trace_location", Map.of(
@@ -88,9 +91,17 @@ final class MlflowSpanJsonBuilder {
         traceInfo.put("trace_metadata", Map.of(
                 "mlflow.trace.session", conversationId,
                 "conversation_id", conversationId));
-        traceInfo.put("tags", Map.of(
-                "conversation_id", conversationId,
-                "source", "chat-controller"));
+        Map<String, String> tags = new LinkedHashMap<>();
+        tags.put("conversation_id", conversationId);
+        tags.put("source", "chat-controller");
+        tags.put(
+                PolicyViolationStateKeys.MLFLOW_TAG_SOFT,
+                String.valueOf(PolicyViolationStateKeys.softCount(executionTrace.state())));
+        tags.put(
+                PolicyViolationStateKeys.MLFLOW_TAG_HARD,
+                String.valueOf(PolicyViolationStateKeys.hardCount(executionTrace.state())));
+        tags.putAll(MlflowDemoUserTags.forUser(demoUser));
+        traceInfo.put("tags", tags);
         return traceInfo;
     }
 

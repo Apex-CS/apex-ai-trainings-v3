@@ -53,6 +53,7 @@ public class GuardrailProperties {
             Map<String, GuardrailType> defaults = new LinkedHashMap<>();
             defaults.put("system-policy", GuardrailType.SYSTEM);
             defaults.put("tool-usage-policy", GuardrailType.TOOL);
+            defaults.put("credential-exposure-policy", GuardrailType.TOOL);
             defaults.put("blocked-topics", GuardrailType.INPUT);
             defaults.put("output-policy", GuardrailType.OUTPUT);
             defaults.put("judge-rubric", GuardrailType.JUDGE);

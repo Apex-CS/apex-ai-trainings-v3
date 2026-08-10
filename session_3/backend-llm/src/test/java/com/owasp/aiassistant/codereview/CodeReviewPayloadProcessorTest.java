@@ -79,6 +79,27 @@ class CodeReviewPayloadProcessorTest {
     }
 
     @Test
+    void readsZipWithStoredEntriesAndDataDescriptor() {
+        // macOS `zip -0` produces STORED entries with data descriptors, which ZipInputStream cannot read.
+        byte[] zipBytes = hexToBytes(
+                "504b03040a0000000000787c055d34b2b7e00c0000000c00000006001c006170702e70795554090003"
+                        + "a49e736aa59e736a75780b000104f601000004140000007072696e7428276f6b27290a504b0102"
+                        + "1e030a0000000000787c055d34b2b7e00c0000000c000000060018000000000000000000a481"
+                        + "000000006170702e70795554050003a49e736a75780b000104f60100000414000000504b0506"
+                        + "00000000010001004c0000004c0000000000");
+        CodeAttachment attachment = new CodeAttachment(
+                "project.zip",
+                "application/zip",
+                "base64",
+                Base64.getEncoder().encodeToString(zipBytes));
+
+        String prepared = processor.prepareForReview(attachment, "all");
+
+        assertTrue(prepared.contains("app.py"));
+        assertTrue(prepared.contains("print('ok')"));
+    }
+
+    @Test
     void rejectsUnsafeZipPaths() throws Exception {
         byte[] zipBytes = zipOf(entry("../evil.py", "bad"));
         CodeAttachment attachment = new CodeAttachment(
@@ -126,6 +147,15 @@ class CodeReviewPayloadProcessorTest {
             zipOutputStream.closeEntry();
         }
         return buffer.toByteArray();
+    }
+
+    private static byte[] hexToBytes(String hex) {
+        byte[] bytes = new byte[hex.length() / 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int offset = i * 2;
+            bytes[i] = (byte) Integer.parseInt(hex.substring(offset, offset + 2), 16);
+        }
+        return bytes;
     }
 
     private static byte[] zipOf(ZipEntryData... entries) throws Exception {

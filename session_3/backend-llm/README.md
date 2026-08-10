@@ -48,6 +48,11 @@ Traces include:
 - Tool call arguments and message history on each step span
 - Graph state fields such as `code_to_review` (currently initialized to `print('hello')`)
 
+Each chat run and trace is tagged with:
+- `user name` — demo user display name (e.g. `Bart Perez`)
+- `user roles` — comma-separated roles (e.g. `it-admin,financial-user,marketing-user,sales-user`)
+- `soft policy violations` / `hard policy violations` — violation counts for the turn
+
 ## Run (chat only)
 
 ```bash
@@ -87,4 +92,19 @@ curl -X POST http://localhost:8080/api/chat \
 | `searchWeb` | Yes | Yes |
 | `queryDatabase` | Yes | Yes |
 | `searchKnowledgeBase` | Returns "not enabled" | Yes |
+| `getBudgetByArea` | Yes (Financial API on :8091) | Yes |
+| `updateBudgetByArea` | Yes (Financial API on :8091) | Yes |
+| `listAppServers` | Yes (IT API on :8092) | Yes |
+| `restartAppServer` | Yes (IT API on :8092) | Yes |
+| `listAppRestartsByApp` | Yes (IT API on :8092) | Yes |
+| `getProducts` | Yes (Sales API on :8093) | Yes |
+| `getSales` | Yes (Sales API on :8093) | Yes |
 | Document ingest API | 503 / error | Yes |
+
+Corporate API tools use demo JWTs from `app.corporate-api.demo-tokens` in `application.yml`.
+Pass optional `demoUser` in the chat request (`FULANO_SMITH`, `SUTANO_DOE`, `MENGANA_DAVIDSON`, `BART_PEREZ`);
+defaults to `BART_PEREZ`.
+
+`getSales` returns redacted customer PII for users without `sales-admin`. Attempts to unredact masked data register a **hard policy violation**.
+
+Submitting application credentials, tokens, or secrets (in chat or code attachments) — including `property=value` / `property: value` assignments and JWTs — is also a **hard policy violation**.

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.owasp.aiassistant.agent.AgentExecutionTrace;
 import com.owasp.aiassistant.config.DatabricksProperties;
 import com.owasp.aiassistant.config.MlflowProperties;
+import com.owasp.aiassistant.corporate.enums.DemoUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -54,11 +55,14 @@ public class MlflowTraceApiClient {
             AgentExecutionTrace executionTrace,
             long startTimeMs,
             long durationMs,
-            String status) throws JsonProcessingException {
+            String status,
+            DemoUser demoUser) throws JsonProcessingException {
         if (properties.isDatabricks()) {
-            return logCompletedTraceV3(experimentId, conversationId, executionTrace, startTimeMs, durationMs, status);
+            return logCompletedTraceV3(
+                    experimentId, conversationId, executionTrace, startTimeMs, durationMs, status, demoUser);
         }
-        return logCompletedTraceV2(experimentId, conversationId, executionTrace, startTimeMs, durationMs, status);
+        return logCompletedTraceV2(
+                experimentId, conversationId, executionTrace, startTimeMs, durationMs, status, demoUser);
     }
 
     public String startTrace(
@@ -126,7 +130,8 @@ public class MlflowTraceApiClient {
             AgentExecutionTrace executionTrace,
             long startTimeMs,
             long durationMs,
-            String status) throws JsonProcessingException {
+            String status,
+            DemoUser demoUser) throws JsonProcessingException {
         Map<String, Object> traceInfo = MlflowSpanJsonBuilder.buildTraceInfo(
                 experimentId,
                 conversationId,
@@ -134,6 +139,7 @@ public class MlflowTraceApiClient {
                 startTimeMs,
                 durationMs,
                 status,
+                demoUser,
                 objectMapper);
 
         ObjectNode body = objectMapper.createObjectNode();
@@ -173,7 +179,14 @@ public class MlflowTraceApiClient {
             AgentExecutionTrace executionTrace,
             long startTimeMs,
             long durationMs,
-            String status) throws JsonProcessingException {
+            String status,
+            DemoUser demoUser) throws JsonProcessingException {
+        Map<String, String> userTags = MlflowDemoUserTags.forUser(demoUser);
+        Map<String, String> startTags = new java.util.LinkedHashMap<>();
+        startTags.put("conversation_id", conversationId);
+        startTags.put("source", "chat-controller");
+        startTags.putAll(userTags);
+
         String traceRequestId = startTrace(
                 experimentId,
                 startTimeMs,
@@ -183,9 +196,12 @@ public class MlflowTraceApiClient {
                         "user_message", truncate(executionTrace.userMessage()),
                         "state", objectMapper.writeValueAsString(executionTrace.state()),
                         "steps", String.valueOf(executionTrace.steps().size())),
-                Map.of(
-                        "conversation_id", conversationId,
-                        "source", "chat-controller"));
+                startTags);
+
+        Map<String, String> endTags = new java.util.LinkedHashMap<>();
+        endTags.put("conversation_id", conversationId);
+        endTags.put("latency_ms", String.valueOf(durationMs));
+        endTags.putAll(userTags);
 
         endTrace(
                 traceRequestId,
@@ -197,9 +213,7 @@ public class MlflowTraceApiClient {
                         "assistant_response", truncate(executionTrace.assistantAnswer()),
                         "state", objectMapper.writeValueAsString(executionTrace.state()),
                         "messages", objectMapper.writeValueAsString(executionTrace.steps())),
-                Map.of(
-                        "conversation_id", conversationId,
-                        "latency_ms", String.valueOf(durationMs)));
+                endTags);
 
         try {
             long startTimeNs = startTimeMs * 1_000_000L;
