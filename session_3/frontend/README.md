@@ -4,14 +4,12 @@ React chat UI for the Spring Boot chatbot backend.
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 20+
 - Backend running on `http://localhost:8080`
 
 ## Run
 
 ```bash
-nvm install 22.12.0
-nvm use 22.12.0
 npm install
 npm run dev
 ```

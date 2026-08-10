@@ -1,0 +1,74 @@
+spring:
+  config:
+    import: file:.env[.properties]
+
+  application:
+    name: owasp-it-api
+
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_HOST_PORT}/owasp_it
+    username: owasp
+    password: owasp
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8092
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  jwt:
+    secret: owasp-financial-demo-secret-key-256-bits-min!!
+  workspace-root: ${APP_WORKSPACE_ROOT:..}
+  restart:
+    startup-timeout-seconds: 90
+  servers:
+    - app-name: financial-backend
+      app-host: http://localhost:8091
+      owner-area: FINANCE
+      port: 8091
+      module-dir: corporate-backend-financial-api
+    - app-name: it-backend
+      app-host: http://localhost:8092
+      owner-area: IT
+      port: 8092
+      module-dir: corporate-backend-it-api
+    - app-name: sales-backend
+      app-host: http://localhost:8093
+      owner-area: SALES
+      port: 8093
+      module-dir: corporate-backend-sales-api
+    - app-name: marketing-backend
+      app-host: http://localhost:8094
+      owner-area: MARKETING
+      port: 8093
+      module-dir: corporate-backend-marketing-api
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    disable-swagger-default-url: true
+    operationsSorter: method
+    tagsSorter: alpha
+
+logging:
+  level:
+    com.owasp.it: INFO

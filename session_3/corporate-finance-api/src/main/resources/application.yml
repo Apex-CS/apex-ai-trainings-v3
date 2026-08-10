@@ -1,0 +1,50 @@
+spring:
+  config:
+    import: file:.env[.properties]
+
+  application:
+    name: owasp-financial-api
+
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_HOST_PORT}/owasp_financial
+    username: owasp
+    password: owasp
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8091
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  jwt:
+    secret: owasp-financial-demo-secret-key-256-bits-min!!
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    disable-swagger-default-url: true
+    operationsSorter: method
+    tagsSorter: alpha
+
+logging:
+  level:
+    com.owasp.financial: INFO

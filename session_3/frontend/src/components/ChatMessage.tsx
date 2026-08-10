@@ -17,6 +17,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </time>
       </div>
       <div className="message-body">
+        {message.attachmentFilename && (
+          <p className="message-attachment">Attached: {message.attachmentFilename}</p>
+        )}
         {isUser ? (
           <p>{message.content}</p>
         ) : (

@@ -1,16 +1,31 @@
+import { CharacterSelectModal } from './CharacterSelectModal'
 import { ChatInput } from './ChatInput'
 import { ChatMessage } from './ChatMessage'
+import { DemoUserBanner } from './DemoUserBanner'
 import { useChat } from '../hooks/useChat'
 
 export function ChatPanel() {
-  const { messages, isLoading, error, warnings, sendMessage, startNewChat, messagesEndRef } = useChat()
+  const {
+    messages,
+    isLoading,
+    error,
+    warnings,
+    demoUser,
+    characterSelectOpen,
+    selectDemoUser,
+    sendMessage,
+    startNewChat,
+    messagesEndRef,
+  } = useChat()
 
   return (
     <div className="chat-layout">
+      <CharacterSelectModal open={characterSelectOpen} onSelect={selectDemoUser} />
+
       <header className="chat-header">
         <div>
           <p className="eyebrow">Example Company</p>
-          <h1>Java-powered Agent for Vectorized Intelligence with Enterprise Response</h1>
+          <h1>Enterprise AI Assistant</h1>
           <p className="subtitle">
             Finance · IT · Marketing · Sales — RAG, web search, and SQL via LangGraph4j
           </p>
@@ -19,6 +34,8 @@ export function ChatPanel() {
           New chat
         </button>
       </header>
+
+      {demoUser && <DemoUserBanner user={demoUser} />}
 
       <main className="chat-main">
         <div className="messages" role="log" aria-live="polite" aria-relevant="additions">
@@ -48,7 +65,15 @@ export function ChatPanel() {
 
         {error && <p className="error-banner">{error}</p>}
 
-        <ChatInput onSend={sendMessage} disabled={isLoading} />
+        <ChatInput
+          onSend={sendMessage}
+          disabled={isLoading || !demoUser}
+          placeholder={
+            demoUser
+              ? undefined
+              : 'Select a demo character above to start chatting…'
+          }
+        />
       </main>
     </div>
   )
