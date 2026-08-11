@@ -98,7 +98,7 @@ app:
         max-tokens: 1024
   http:
     corporate-ca-enabled: true
-    corporate-ca-pem: classpath:nike-ca-certs-2027.pem
+    corporate-ca-pem: classpath:ca-certs.pem
   mlflow:
     enabled: true
     # MLFLOW_TRACKING_URI=databricks for Databricks hosted tracking; otherwise local Docker server URL

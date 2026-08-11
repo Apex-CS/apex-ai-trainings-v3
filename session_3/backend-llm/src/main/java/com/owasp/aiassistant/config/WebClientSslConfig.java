@@ -30,7 +30,7 @@ public class WebClientSslConfig {
     @Bean
     @ConditionalOnProperty(name = "app.http.corporate-ca-enabled", havingValue = "true", matchIfMissing = true)
     WebClient.Builder corporateWebClientBuilder(
-            @Value("${app.http.corporate-ca-pem:classpath:nike-ca-certs-2027.pem}") Resource corporateCaPem)
+            @Value("${app.http.corporate-ca-pem:classpath:ca-certs.pem}") Resource corporateCaPem)
             throws Exception {
         SslContext sslContext = buildSslContext(corporateCaPem);
         HttpClient httpClient = HttpClient.create().secure(ssl -> ssl.sslContext(sslContext));
