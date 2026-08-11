@@ -36,6 +36,10 @@ spring:
         initialize-schema: true
         collection-name: owasp_documents
 
+autoconfigure_:
+  exclude:
+    - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
+
 server:
   port: 8081
 
