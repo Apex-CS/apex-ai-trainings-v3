@@ -102,8 +102,8 @@ app:
   mlflow:
     enabled: true
     # MLFLOW_TRACKING_URI=databricks for Databricks hosted tracking; otherwise local Docker server URL
-    tracking-uri: ${MLFLOW_TRACKING_URI:http://localhost:${MLFLOW_HOST_PORT}}
-    experiment-name: ${MLFLOW_EXPERIMENT_NAME:owasp-chat}
+    tracking-uri: ${MLFLOW_TRACKING_URI}
+    experiment-name: ${MLFLOW_EXPERIMENT_NAME}
     # On Databricks, create the experiment in the workspace UI or set this to true
     auto-create-experiment: ${MLFLOW_AUTO_CREATE_EXPERIMENT:true}
   corporate-api:

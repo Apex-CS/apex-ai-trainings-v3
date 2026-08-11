@@ -1,6 +1,5 @@
 services:
   postgres:
-    profiles: ["local","databricks"]
     image: postgres:16-alpine
     container_name: owasp-postgres
     environment:
@@ -19,7 +18,6 @@ services:
       retries: 10
 
   qdrant:
-    profiles: ["local","databricks"]
     image: qdrant/qdrant:v1.13.2
     container_name: owasp-qdrant
     ports:
@@ -33,54 +31,7 @@ services:
       timeout: 5s
       retries: 10
 
-  ollama:
-    profiles: ["local"]
-    image: ollama/ollama:latest
-    container_name: owasp-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-      - ./docker/ollama/Apex Zscaler Root CA.crt:/usr/local/share/ca-certificates/Apex Zscaler Root CA.crt:ro
-      - ./docker/ollama/entrypoint.sh:/entrypoint.sh:ro
-    entrypoint: ["/bin/bash","/entrypoint.sh"]
-    healthcheck:
-      test: ["CMD","ollama","list"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 30s
-
-  mlflow:
-    profiles: ["local"]
-    build:
-      context: ./docker/mlflow
-    container_name: owasp_mlflow
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "${MLFLOW_HOST_PORT:-5000}:${MLFLOW_CONTAINER_PORT:-5000}"
-    environment:
-      MLFLOW_BACKEND_STORE_URI: postgresql://owasp:owasp@postgres:${POSTGRES_CONTAINER_PORT:-5432}/mlflow
-      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
-    volumes:
-      - mlflow_artifacts:/mlflow/artifacts
-    command: >
-      mlflow server
-      --host 0.0.0.0
-      --port ${MLFLOW_CONTAINER_PORT:-5000}
-      --backend-store-uri postgresql://owasp:owasp@postgres:${POSTGRES_CONTAINER_PORT:-5432}/mlflow
-      --default-artifact-root /mlflow/artifacts
-    healthcheck:
-      test: [ "CMD","python","-c","import urllib.request; urllib.request.urlopen('http://localhost:${MLFLOW_CONTAINER_PORT:-5000}/health')" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
 volumes:
   postgres_data:
   qdrant_data:
-  ollama_data:
-  mlflow_artifacts:
 
