@@ -1,0 +1,102 @@
+version: "3.9"
+
+services:
+
+  # ─── WireMock: simulates Jira MCP Server (SSE transport) ───────────────────
+  wiremock-jira:
+    image: wiremock/wiremock:3.9.1
+    container_name: wiremock-jira
+    ports:
+      - "9001:8080"
+    volumes:
+      - ./module-02-mcp-client/wiremock:/home/wiremock
+    command: >
+      --global-response-templating
+      --verbose
+    networks:
+      - mcp-workshop
+
+  # ─── WireMock: simulates Legacy Customer REST API ──────────────────────────
+  wiremock-customer-api:
+    image: wiremock/wiremock:3.9.1
+    container_name: wiremock-customer-api
+    ports:
+      - "9002:8080"
+    volumes:
+      - ./module-03-mcp-server/wiremock:/home/wiremock
+    command: >
+      --global-response-templating
+      --verbose
+    networks:
+      - mcp-workshop
+
+  # ─── WireMock: simulates Deployment REST API (Module 4 & 5) ───────────────
+  wiremock-deployment-api:
+    image: wiremock/wiremock:3.9.1
+    container_name: wiremock-deployment-api
+    ports:
+      - "9003:8080"
+    volumes:
+      - ./module-04-security/wiremock:/home/wiremock
+    command: >
+      --global-response-templating
+      --verbose
+    networks:
+      - mcp-workshop
+
+  # ─── Keycloak: OAuth2 Authorization Server ─────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    container_name: workshop-keycloak
+    ports:
+      - "8180:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-mem
+    command: start-dev --import-realm
+    volumes:
+      - ./infra/keycloak/workshop-realm.json:/opt/keycloak/data/import/workshop-realm.json
+    networks:
+      - mcp-workshop
+
+  # ─── Module 03 MCP Server (SSE, port 8083) ─────────────────────────────────
+  mcp-server-customers:
+    build:
+      context: ./module-03-mcp-server
+      dockerfile: Dockerfile
+    container_name: mcp-server-customers
+    ports:
+      - "8083:8083"
+    environment:
+      - CUSTOMER_API_URL=http://wiremock-customer-api:8080
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - wiremock-customer-api
+    networks:
+      - mcp-workshop
+
+  # ─── Module 04 Secure MCP Server (SSE, port 8084) ──────────────────────────
+  mcp-server-secure:
+    build:
+      context: ./module-04-security
+      dockerfile: Dockerfile
+    container_name: mcp-server-secure
+    ports:
+      - "8084:8084"
+    environment:
+      - DEPLOYMENT_API_URL=http://wiremock-deployment-api:8080
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/workshop
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - keycloak
+      - wiremock-deployment-api
+    networks:
+      - mcp-workshop
+
+networks:
+  mcp-workshop:
+    driver: bridge
+
+volumes:
+  keycloak-data:

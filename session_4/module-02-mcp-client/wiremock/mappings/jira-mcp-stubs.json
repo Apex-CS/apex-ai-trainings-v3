@@ -1,0 +1,216 @@
+{
+  "mappings": [
+    {
+      "name": "MCP SSE endpoint — initial connection",
+      "request": {
+        "method": "GET",
+        "url": "/sse",
+        "headers": {
+          "Accept": { "contains": "text/event-stream" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no"
+        },
+        "body": "event: endpoint\ndata: /mcp/message\n\n"
+      }
+    },
+    {
+      "name": "MCP initialize handshake",
+      "request": {
+        "method": "POST",
+        "url": "/mcp/message",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.method == 'initialize')]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "jsonrpc": "2.0",
+          "id": "{{jsonPath request.body '$.id'}}",
+          "result": {
+            "protocolVersion": "2024-11-05",
+            "serverInfo": {
+              "name": "mock-jira-mcp-server",
+              "version": "1.0.0"
+            },
+            "capabilities": {
+              "tools": {}
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "MCP tools/list",
+      "request": {
+        "method": "POST",
+        "url": "/mcp/message",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.method == 'tools/list')]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "jsonrpc": "2.0",
+          "id": "{{jsonPath request.body '$.id'}}",
+          "result": {
+            "tools": [
+              {
+                "name": "jira_get_issue",
+                "description": "Retrieves a Jira issue by its key (e.g. PROJ-123). Returns full issue details including status, priority, assignee, and fix versions.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "issueKey": {
+                      "type": "string",
+                      "description": "Jira issue key in format PROJECT-NUMBER, e.g. PROJ-123"
+                    }
+                  },
+                  "required": ["issueKey"]
+                }
+              },
+              {
+                "name": "jira_search_issues",
+                "description": "Searches Jira issues using a JQL (Jira Query Language) query string. Returns a list of matching issues.",
+                "inputSchema": {
+                  "type": "object",
+                  "properties": {
+                    "jql": {
+                      "type": "string",
+                      "description": "JQL query string, e.g. 'project=PROJ AND priority=Critical AND status!=Done'"
+                    },
+                    "maxResults": {
+                      "type": "integer",
+                      "description": "Maximum number of results to return (default: 10, max: 100)"
+                    }
+                  },
+                  "required": ["jql"]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "tools/call jira_get_issue — PROJ-101",
+      "request": {
+        "method": "POST",
+        "url": "/mcp/message",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.method == 'tools/call')]" },
+          { "matchesJsonPath": "$[?(@.params.name == 'jira_get_issue')]" },
+          { "matchesJsonPath": "$[?(@.params.arguments.issueKey == 'PROJ-101')]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "jsonrpc": "2.0",
+          "id": "{{jsonPath request.body '$.id'}}",
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"key\":\"PROJ-101\",\"summary\":\"NPE in payment processor when card token is null\",\"status\":\"Open\",\"priority\":\"Critical\",\"issuetype\":\"Bug\",\"assignee\":\"alice@example.com\",\"reporter\":\"bob@example.com\",\"created\":\"2024-10-01T09:00:00Z\",\"updated\":\"2024-11-01T14:30:00Z\",\"fixVersions\":[\"2.4\"],\"labels\":[\"payment\",\"regression\"]}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "name": "tools/call jira_get_issue — not found",
+      "request": {
+        "method": "POST",
+        "url": "/mcp/message",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.method == 'tools/call')]" },
+          { "matchesJsonPath": "$[?(@.params.name == 'jira_get_issue')]" },
+          { "matchesJsonPath": "$[?(@.params.arguments.issueKey == 'PROJ-99999')]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "jsonrpc": "2.0",
+          "id": "{{jsonPath request.body '$.id'}}",
+          "result": {
+            "content": [
+              { "type": "text", "text": "Issue PROJ-99999 not found" }
+            ],
+            "isError": true
+          }
+        }
+      }
+    },
+    {
+      "name": "tools/call jira_search_issues — critical bugs release 2.4",
+      "request": {
+        "method": "POST",
+        "url": "/mcp/message",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.method == 'tools/call')]" },
+          { "matchesJsonPath": "$[?(@.params.name == 'jira_search_issues')]" },
+          { "matchesJsonPath": "$[?(@.params.arguments.jql =~ /.*2\\.4.*/)]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "jsonrpc": "2.0",
+          "id": "{{jsonPath request.body '$.id'}}",
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "[{\"key\":\"PROJ-101\",\"summary\":\"NPE in payment processor when card token is null\",\"status\":\"Open\",\"priority\":\"Critical\",\"issuetype\":\"Bug\",\"fixVersions\":[\"2.4\"],\"labels\":[\"payment\"]},{\"key\":\"PROJ-108\",\"summary\":\"Deadlock in session management under high concurrency\",\"status\":\"In Progress\",\"priority\":\"Critical\",\"issuetype\":\"Bug\",\"fixVersions\":[\"2.4\"],\"labels\":[\"concurrency\",\"session\"]}]"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "name": "tools/call jira_search_issues — release 3.0 (no blockers)",
+      "request": {
+        "method": "POST",
+        "url": "/mcp/message",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.method == 'tools/call')]" },
+          { "matchesJsonPath": "$[?(@.params.name == 'jira_search_issues')]" },
+          { "matchesJsonPath": "$[?(@.params.arguments.jql =~ /.*3\\.0.*/)]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "jsonrpc": "2.0",
+          "id": "{{jsonPath request.body '$.id'}}",
+          "result": {
+            "content": [
+              { "type": "text", "text": "[]" }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  ]
+}

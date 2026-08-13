@@ -1,0 +1,118 @@
+{
+  "mappings": [
+    {
+      "name": "GET all customers",
+      "request": { "method": "GET", "url": "/api/customers" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": [
+          {
+            "id": "cust-001", "name": "Alice Johnson", "email": "alice@example.com",
+            "phone": "+12025550101", "tier": "PREMIUM", "status": "ACTIVE",
+            "createdAt": "2023-01-15T10:00:00Z", "updatedAt": "2024-03-01T08:30:00Z"
+          },
+          {
+            "id": "cust-002", "name": "Bob Smith", "email": "bob@example.com",
+            "phone": "+12025550102", "tier": "STANDARD", "status": "ACTIVE",
+            "createdAt": "2023-06-20T14:00:00Z", "updatedAt": "2024-01-10T11:00:00Z"
+          },
+          {
+            "id": "cust-003", "name": "Carol White", "email": "carol@example.com",
+            "phone": "+12025550103", "tier": "ENTERPRISE", "status": "INACTIVE",
+            "createdAt": "2022-11-05T09:00:00Z", "updatedAt": "2023-09-15T16:45:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GET customers filtered by status=ACTIVE",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/customers",
+        "queryParameters": { "status": { "equalTo": "ACTIVE" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": [
+          {
+            "id": "cust-001", "name": "Alice Johnson", "email": "alice@example.com",
+            "phone": "+12025550101", "tier": "PREMIUM", "status": "ACTIVE",
+            "createdAt": "2023-01-15T10:00:00Z", "updatedAt": "2024-03-01T08:30:00Z"
+          },
+          {
+            "id": "cust-002", "name": "Bob Smith", "email": "bob@example.com",
+            "phone": "+12025550102", "tier": "STANDARD", "status": "ACTIVE",
+            "createdAt": "2023-06-20T14:00:00Z", "updatedAt": "2024-01-10T11:00:00Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GET customer by ID — cust-001",
+      "request": { "method": "GET", "url": "/api/customers/cust-001" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": "cust-001", "name": "Alice Johnson", "email": "alice@example.com",
+          "phone": "+12025550101", "tier": "PREMIUM", "status": "ACTIVE",
+          "createdAt": "2023-01-15T10:00:00Z", "updatedAt": "2024-03-01T08:30:00Z"
+        }
+      }
+    },
+    {
+      "name": "GET customer by ID — not found",
+      "request": { "method": "GET", "urlPattern": "/api/customers/cust-9[0-9]{3}" },
+      "response": {
+        "status": 404,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "error": "Customer not found", "code": 404 }
+      }
+    },
+    {
+      "name": "POST create customer",
+      "request": {
+        "method": "POST",
+        "url": "/api/customers",
+        "bodyPatterns": [{ "matchesJsonPath": "$[?(@.name)]" }]
+      },
+      "response": {
+        "status": 201,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": "cust-{{randomValue type='UUID' uppercase=false}}",
+          "name": "{{jsonPath request.body '$.name'}}",
+          "email": "{{jsonPath request.body '$.email'}}",
+          "phone": "{{jsonPath request.body '$.phone'}}",
+          "tier": "{{jsonPath request.body '$.tier'}}",
+          "status": "ACTIVE",
+          "createdAt": "{{now format='yyyy-MM-dd\\'T\\'HH:mm:ss\\'Z\\''}}", 
+          "updatedAt": "{{now format='yyyy-MM-dd\\'T\\'HH:mm:ss\\'Z\\''}}"
+        }
+      }
+    },
+    {
+      "name": "PATCH update customer cust-001",
+      "request": {
+        "method": "PATCH",
+        "url": "/api/customers/cust-001"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "id": "cust-001",
+          "name": "{{jsonPath request.body '$.name'}}",
+          "email": "{{jsonPath request.body '$.email'}}",
+          "phone": "+12025550101",
+          "tier": "{{jsonPath request.body '$.tier'}}",
+          "status": "ACTIVE",
+          "createdAt": "2023-01-15T10:00:00Z",
+          "updatedAt": "{{now format='yyyy-MM-dd\\'T\\'HH:mm:ss\\'Z\\''}}"
+        }
+      }
+    }
+  ]
+}

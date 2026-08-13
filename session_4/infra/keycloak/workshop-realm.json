@@ -1,0 +1,39 @@
+{
+  "realm": "workshop",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "mcp-client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "mcp-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": ["profile", "email", "roles"]
+    }
+  ],
+  "users": [
+    {
+      "username": "workshop-user",
+      "enabled": true,
+      "email": "workshop@example.com",
+      "firstName": "Workshop",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "workshop123", "temporary": false }],
+      "realmRoles": ["deployer", "viewer"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "deployer", "description": "Can trigger deployments" },
+      { "name": "viewer",   "description": "Read-only access" }
+    ]
+  },
+  "accessTokenLifespan": 600,
+  "accessTokenLifespanForImplicitFlow": 900
+}

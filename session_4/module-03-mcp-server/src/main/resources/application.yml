@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: customer-management-mcp
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    mcp:
+      server:
+        name: customer-management-mcp
+        version: 1.0.0
+        type: SYNC
+        sse-message-endpoint: /mcp/message
+
+customer:
+  api:
+    base-url: http://localhost:9002
+
+server:
+  port: 8083
+
+logging:
+  level:
+    root: INFO
+    com.workshop.mcp.module03: DEBUG
+    io.modelcontextprotocol: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+customer:
+  api:
+    base-url: http://wiremock-customer-api:8080

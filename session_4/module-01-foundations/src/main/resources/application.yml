@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: workshop-hello-mcp
+  main:
+    banner-mode: off              # REQUIRED: banner on stdout corrupts stdio JSON-RPC stream
+    web-application-type: none    # REQUIRED: stdio transport needs no web server
+  threads:
+    virtual:
+      enabled: true   # Java 21 Virtual Threads (Project Loom)
+  ai:
+    mcp:
+      server:
+        name: workshop-hello-mcp
+        version: 1.0.0
+        type: SYNC        # Synchronous tool execution (blocking)
+        stdio: true       # Enable stdio transport (reads from stdin, writes to stdout)
+
+# IMPORTANT: ALL log output MUST be redirected to a file.
+# Any text on stdout corrupts the JSON-RPC stream when using stdio transport.
+logging:
+  level:
+    root: OFF
+  file:
+    name: /tmp/module01-mcp-server.log

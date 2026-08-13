@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: secure-deployment-mcp
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    mcp:
+      server:
+        name: secure-deployment-mcp
+        version: 1.0.0
+        type: SYNC
+        sse-message-endpoint: /mcp/message
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Spring Security auto-fetches JWKS from {issuer-uri}/.well-known/openid-configuration
+          issuer-uri: http://localhost:8180/realms/workshop
+
+resilience4j:
+  ratelimiter:
+    instances:
+      mcp-tool-calls:
+        limit-for-period: 10          # Max calls per refresh period
+        limit-refresh-period: 60s     # Reset every 60 seconds
+        timeout-duration: 0s          # Fail immediately — never queue
+        register-health-indicator: true
+
+deployment:
+  api:
+    base-url: http://localhost:9003
+
+server:
+  port: 8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,ratelimiters
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    com.workshop.mcp.module04: DEBUG
+    AUDIT: INFO          # Dedicated audit logger
+  file:
+    name: /tmp/module04-audit.log   # Audit logs go to file for SIEM ingestion
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/workshop
+deployment:
+  api:
+    base-url: http://wiremock-deployment-api:8080

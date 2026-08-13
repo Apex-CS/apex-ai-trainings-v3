@@ -1,0 +1,42 @@
+{
+  "mappings": [
+    {
+      "name": "POST deploy — DEV or STAGING",
+      "request": {
+        "method": "POST",
+        "url": "/api/deployments",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.environment =~ /DEV|STAGING/i)]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "status": "DEPLOYED",
+          "applicationName": "{{jsonPath request.body '$.applicationName'}}",
+          "version": "{{jsonPath request.body '$.version'}}",
+          "environment": "{{jsonPath request.body '$.environment'}}",
+          "deploymentId": "deploy-{{randomValue type='UUID' uppercase=false}}",
+          "deployedAt": "{{now format='yyyy-MM-dd\\'T\\'HH:mm:ss\\'Z\\''}}"
+        }
+      }
+    },
+    {
+      "name": "GET deployment status",
+      "request": {
+        "method": "GET",
+        "urlPattern": "/api/deployments/[^/]+/[^/]+"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": {
+          "status": "RUNNING",
+          "version": "v2.4.1",
+          "lastDeployedAt": "{{now format='yyyy-MM-dd\\'T\\'HH:mm:ss\\'Z\\''}}"
+        }
+      }
+    }
+  ]
+}
