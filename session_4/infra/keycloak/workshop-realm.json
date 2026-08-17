@@ -14,7 +14,12 @@
       "directAccessGrantsEnabled": true,
       "publicClient": false,
       "protocol": "openid-connect",
-      "defaultClientScopes": ["profile", "email", "roles"]
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "basic"
+      ]
     }
   ],
   "users": [
@@ -24,14 +29,29 @@
       "email": "workshop@example.com",
       "firstName": "Workshop",
       "lastName": "User",
-      "credentials": [{ "type": "password", "value": "workshop123", "temporary": false }],
-      "realmRoles": ["deployer", "viewer"]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "workshop123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "deployer",
+        "viewer"
+      ]
     }
   ],
   "roles": {
     "realm": [
-      { "name": "deployer", "description": "Can trigger deployments" },
-      { "name": "viewer",   "description": "Read-only access" }
+      {
+        "name": "deployer",
+        "description": "Can trigger deployments"
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only access"
+      }
     ]
   },
   "accessTokenLifespan": 600,

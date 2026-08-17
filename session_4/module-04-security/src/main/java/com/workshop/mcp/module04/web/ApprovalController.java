@@ -47,7 +47,7 @@ public class ApprovalController {
                     "approved", true,
                     "requestId", requestId,
                     "description", approval.description(),
-                    "approvedBy", approver.email(),
+                    "approvedBy", approver.username(),
                     "message", "Deployment approved. It will execute on the next LLM retry."));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

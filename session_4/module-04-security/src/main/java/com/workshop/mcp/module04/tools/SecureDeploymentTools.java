@@ -12,6 +12,7 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -51,6 +52,8 @@ public class SecureDeploymentTools {
         this.objectMapper = objectMapper;
         this.deploymentClient = RestClient.builder()
                 .baseUrl(deploymentApiUrl)
+                // Force HTTP/1.1 — WireMock does not support HTTP/2 upgrade over plain HTTP
+                .requestFactory(new SimpleClientHttpRequestFactory())
                 .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
@@ -81,7 +84,8 @@ public class SecureDeploymentTools {
             sanitizer.assertSafe(environment, "environment");
         } catch (InputSanitizer.PromptInjectionException e) {
             auditLog.injectionDetected("triggerDeployment", identity, e.getMessage());
-            return toErrorJson("Security violation: " + e.getMessage());
+            // Re-throw as a JSON-formatted RuntimeException so MCP sets isError: true
+            throw new RuntimeException(toErrorJson(e.getMessage()));
         }
 
         // Layer 4: Human-in-the-loop for PROD deployments
@@ -143,17 +147,28 @@ public class SecureDeploymentTools {
     }
 
     // ─── Resilience4j fallback — called when rate limit is exceeded ───────────
+    // Note: Resilience4j also calls this fallback for ANY exception thrown from the method.
+    // We check the exception type to distinguish rate limiting from security exceptions.
 
     public String rateLimitFallback(String a, String b, String c, Throwable t) {
-        var identity = CallerIdentity.fromSecurityContext();
-        auditLog.rateLimitExceeded("triggerDeployment", identity);
-        return toErrorJson("Rate limit exceeded. Maximum 10 tool calls per 60 seconds. Please wait and retry.");
+        if (t instanceof io.github.resilience4j.ratelimiter.RequestNotPermitted) {
+            var identity = CallerIdentity.fromSecurityContext();
+            auditLog.rateLimitExceeded("triggerDeployment", identity);
+            return toErrorJson("Rate limit exceeded. Maximum 10 tool calls per 60 seconds. Please wait and retry.");
+        }
+        // Re-throw non-rate-limit exceptions so the MCP framework sets isError: true
+        if (t instanceof RuntimeException re) throw re;
+        throw new RuntimeException(t);
     }
 
     public String rateLimitFallback(String a, String b, Throwable t) {
-        var identity = CallerIdentity.fromSecurityContext();
-        auditLog.rateLimitExceeded("getDeploymentStatus", identity);
-        return toErrorJson("Rate limit exceeded. Please wait and retry.");
+        if (t instanceof io.github.resilience4j.ratelimiter.RequestNotPermitted) {
+            var identity = CallerIdentity.fromSecurityContext();
+            auditLog.rateLimitExceeded("getDeploymentStatus", identity);
+            return toErrorJson("Rate limit exceeded. Please wait and retry.");
+        }
+        if (t instanceof RuntimeException re) throw re;
+        throw new RuntimeException(t);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

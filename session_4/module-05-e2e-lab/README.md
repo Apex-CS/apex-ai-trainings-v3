@@ -88,7 +88,7 @@ User  ──POST /release──►  ReleaseIntegrationAgent (port 8085)
 ### Step 1 — Start All Services and Verify Health
 
 ```bash
-cd /root/projects/java_workshop
+cd /root/projects/apex-ai-trainings-v3/session_4
 docker compose up -d
 
 echo "=== Service Health Check ==="

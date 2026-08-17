@@ -313,13 +313,14 @@ mvn spring-boot:run &
 # Wait for startup
 sleep 5
 
-# Verify the SSE endpoint is available
-curl -I http://localhost:8083/sse
+# Verify the SSE endpoint is available (use GET — HEAD is not routed to SSE handlers)
+curl -s --max-time 2 http://localhost:8083/sse -H 'Accept: text/event-stream' -D - | head -5
 ```
 
 **Expected:**
 ```
-HTTP/1.1 200
+HTTP/1.1 200 
+Cache-Control: no-cache
 Content-Type: text/event-stream
 Transfer-Encoding: chunked
 ```

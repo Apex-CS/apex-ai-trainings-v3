@@ -37,7 +37,7 @@ Five hands-on modules that take you from MCP fundamentals to a production-ready,
 
 ```bash
 # 1. Clone / open workspace
-cd /root/projects/java_workshop
+cd /root/projects/apex-ai-trainings-v3/session_4
 
 # 2. Start shared infrastructure
 docker compose up -d

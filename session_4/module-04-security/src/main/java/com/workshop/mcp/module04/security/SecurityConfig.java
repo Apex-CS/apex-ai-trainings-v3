@@ -1,10 +1,13 @@
 package com.workshop.mcp.module04.security;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -19,6 +22,16 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    /**
+     * Propagate SecurityContext into child virtual threads spawned by the MCP SDK.
+     * Without InheritableThreadLocal mode, tool methods called on Reactor/loom threads
+     * would see an empty SecurityContext and report the caller as "anonymous".
+     */
+    @PostConstruct
+    public void configureSecurityContextHolder() {
+        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -37,7 +50,13 @@ public class SecurityConfig {
                         .requestMatchers("/mcp/message").authenticated()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter())))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter()))
+                        .authenticationEntryPoint((request, response, ex) -> {
+                            // Return JSON body on 401 so curl tests can validate the response
+                            response.setStatus(401);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write("{\"error\":\"Unauthorized\"}");
+                        }))
                 .sessionManagement(sm -> sm
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();

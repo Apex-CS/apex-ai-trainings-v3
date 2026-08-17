@@ -1,9 +1,8 @@
 package com.workshop.mcp.module02.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
-import io.modelcontextprotocol.client.transport.ServerParameters;
-import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -12,43 +11,30 @@ import org.springframework.context.annotation.Configuration;
 /**
  * MCP Client Configuration — Module 02.
  *
- * <p>Creates a {@link McpSyncClient} connected to the Module 01 server via
- * <b>stdio transport</b>. Stdio launches the server as a child process and
- * communicates over its stdin/stdout pipes — the same mechanism used by
- * Claude Desktop and most real-world MCP hosts.
+ * <p>Creates a {@link McpSyncClient} connected to the Jira mock MCP server via
+ * <b>SSE transport</b>. SSE works across network boundaries and supports
+ * multiple concurrent clients — required for microservices.
  *
- * <p>Stdio transport lifecycle:
- * <ol>
- *   <li>Client spawns the server process (java -jar module-01.jar)</li>
- *   <li>Client writes JSON-RPC requests to the process stdin</li>
- *   <li>Server writes JSON-RPC responses to stdout</li>
- *   <li>Client reads the responses from the process stdout</li>
- * </ol>
+ * <p>{@link HttpPostMcpTransport} performs the SSE endpoint discovery handshake
+ * (GET /sse) then sends each JSON-RPC message via HTTP POST and reads the
+ * response from the HTTP body — matching how WireMock serves the mock.
  */
 @Configuration
 public class McpClientConfig {
 
-    @Value("${mcp.server.jar-path}")
-    private String serverJarPath;
+    @Value("${jira.mcp.server.url}")
+    private String jiraMcpServerUrl;
 
     @Bean(destroyMethod = "close")
-    public McpSyncClient jiraMcpClient() {
-        var serverParams = ServerParameters.builder("java")
-                .args("-jar", serverJarPath)
-                .build();
-
-        var transport = new StdioClientTransport(serverParams);
-        // Module 01 routes all logs to /tmp/module01-mcp-server.log, so suppress stderr here
-        transport.setStdErrorHandler(line -> {});
+    public McpSyncClient jiraMcpClient(ObjectMapper objectMapper) {
+        var transport = new HttpPostMcpTransport(jiraMcpServerUrl, "/sse", objectMapper);
 
         var client = McpClient.sync(transport)
-                .clientInfo(new McpSchema.Implementation("workshop-mcp-client", "1.0.0"))
-                .capabilities(McpSchema.ClientCapabilities.builder().build())
+                .clientInfo(new McpSchema.Implementation("workshop-jira-client", "1.0.0"))
                 .build();
 
-        // MCP initialization handshake (sent over stdio, same protocol as SSE/HTTP)
+        // MCP handshake: sends initialize request, receives server capabilities
         client.initialize();
-
         return client;
     }
 }

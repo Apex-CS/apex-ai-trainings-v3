@@ -71,7 +71,7 @@ SSE (Server-Sent Events) transport flow:
 WireMock simulates a Jira MCP Server that speaks the MCP SSE protocol. The mock responds to the MCP handshake and Jira-specific tool calls.
 
 ```bash
-cd /root/projects/java_workshop
+cd /root/projects/apex-ai-trainings-v3/session_4
 docker compose up -d wiremock-jira
 
 # Verify it's up

@@ -53,7 +53,7 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: dev-mem
+      KC_DB: dev-file
     command: start-dev --import-realm
     volumes:
       - ./infra/keycloak/workshop-realm.json:/opt/keycloak/data/import/workshop-realm.json

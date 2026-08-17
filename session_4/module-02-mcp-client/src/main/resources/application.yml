@@ -12,12 +12,11 @@ spring:
 server:
   port: 8082
 
-# Stdio transport: launches Module 01's JAR as a child process.
-# The client communicates with the server over its stdin/stdout pipes.
-# This is the same transport used by Claude Desktop and most MCP hosts.
-mcp:
-  server:
-    jar-path: ../module-01-foundations/target/module-01-foundations-1.0.0-SNAPSHOT.jar
+# SSE transport: connects to the Jira mock MCP server over HTTP/SSE.
+jira:
+  mcp:
+    server:
+      url: http://localhost:9001
 
 logging:
   level:

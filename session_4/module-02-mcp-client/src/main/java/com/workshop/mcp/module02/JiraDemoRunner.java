@@ -1,20 +1,15 @@
 package com.workshop.mcp.module02;
 
-import com.workshop.mcp.module02.client.JiraMcpClientService;
-import com.workshop.mcp.module02.dto.SystemInfoDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.List;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-/**
- * Demo runner that exercises all four MCP client patterns on startup.
- * Connects to Module 01's server via stdio transport.
- */
+import com.workshop.mcp.module02.client.JiraMcpClientService;
+import com.workshop.mcp.module02.dto.JiraIssueDTO;
+
 @Component
 public class JiraDemoRunner implements CommandLineRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(JiraDemoRunner.class);
 
     private final JiraMcpClientService service;
 
@@ -24,42 +19,29 @@ public class JiraDemoRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        System.out.println("\n=== MCP Client Demo (Module 02) ===");
-        System.out.println("Transport: stdio  |  Server: Module 01 (workshop-hello-mcp)\n");
+        System.out.println("\n=== Jira MCP Client Demo ===");
 
-        // Pattern 1: Dynamic tool discovery
         var tools = service.listAvailableTools();
-        System.out.println("[Pattern 1] Available tools: "
+        System.out.println("Available tools: "
                 + tools.stream().map(t -> t.name()).toList());
 
-        // Pattern 2: Tool invocation with typed numeric response
-        double sum = service.add(7, 3);
-        System.out.printf("%n[Pattern 2] add(7, 3) = %.1f%n", sum);
+        System.out.println("\nFetching issue PROJ-101...");
+        JiraIssueDTO issue = service.getIssue("PROJ-101");
+        System.out.printf("Issue: %s - %s [%s %s, status=%s]%n",
+                issue.key(), issue.summary(),
+                issue.priority().toUpperCase(), issue.issueType().toUpperCase(),
+                issue.status());
 
-        double sum2 = service.add(100, 200);
-        System.out.printf("[Pattern 2] add(100, 200) = %.1f%n", sum2);
+        System.out.println("\nSearching critical bugs for release 2.4...");
+        List<JiraIssueDTO> blockers = service.searchCriticalBugs("PROJ", "2.4");
+        System.out.printf("Found %d critical open bugs:%n", blockers.size());
+        blockers.forEach(b -> System.out.printf("  - %s: %s%n", b.key(), b.summary()));
 
-        // Pattern 3: Structured JSON response deserialized to DTO
-        System.out.println("\n[Pattern 3] Calling systemInfo() — JSON → DTO...");
-        SystemInfoDTO info = service.getSystemInfo();
-        System.out.printf("  Java     : %s (%s)%n", info.javaVersion(), info.javaVendor());
-        System.out.printf("  OS       : %s (%s)%n", info.osName(), info.osArch());
-        System.out.printf("  CPUs     : %d%n", info.availableProcessors());
-        System.out.printf("  Heap     : %d MB used / %d MB max%n",
-                info.usedHeapMemoryMb(), info.maxHeapMemoryMb());
-        System.out.printf("  Threads  : %s%n", info.threadModel());
-        System.out.printf("  Virtual? : %b%n", info.isVirtualThread());
+        boolean blocked = blockers.stream().anyMatch(JiraIssueDTO::isReleaseBlocker);
+        System.out.println(blocked
+                ? "\nRelease 2.4 is BLOCKED \u2014 resolve critical bugs before deploying."
+                : "\nRelease 2.4 is CLEAR \u2014 no critical blockers found.");
 
-        // Pattern 4: Error handling — isError:true in MCP response
-        System.out.println("\n[Pattern 4] Calling divide(10, 0) — expect isError:true...");
-        try {
-            service.divide(10, 0);
-            System.out.println("  (no error — unexpected)");
-        } catch (JiraMcpClientService.JiraMcpException e) {
-            System.out.println("  Caught JiraMcpException: " + e.getMessage());
-            System.out.println("  \u2713 Server returned isError:true — client surfaced it as Java exception");
-        }
-
-        System.out.println("\n=== Demo Complete ===\n");
+        System.out.println("\n=== Demo Complete ===");
     }
 }
