@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: jira-mcp-server
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    mcp:
+      server:
+        name: jira-mcp-server
+        version: 1.0.0
+        type: SYNC
+        sse-message-endpoint: /mcp/message
+
+server:
+  port: 9001
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    root: INFO
+    com.workshop.mcp.jira: DEBUG

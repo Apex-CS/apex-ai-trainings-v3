@@ -12,11 +12,22 @@
       "response": {
         "status": 200,
         "headers": { "Content-Type": "application/json" },
-        "jsonBody": {
-          "status": "DEPLOYED",
-          "environment": "{{jsonPath request.body '$.environment'}}",
-          "version": "{{jsonPath request.body '$.version'}}"
-        }
+        "body": "{\"status\":\"DEPLOYED\",\"applicationName\":\"{{jsonPath request.body '$.applicationName'}}\",\"version\":\"{{jsonPath request.body '$.version'}}\",\"environment\":\"{{jsonPath request.body '$.environment'}}\",\"deploymentId\":\"deploy-{{randomValue type='UUID' uppercase=false}}\"}"
+      }
+    },
+    {
+      "name": "POST deploy — PROD (after human approval)",
+      "request": {
+        "method": "POST",
+        "url": "/api/deployments",
+        "bodyPatterns": [
+          { "matchesJsonPath": "$[?(@.environment =~ /PROD/i)]" }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": "{\"status\":\"DEPLOYED\",\"applicationName\":\"{{jsonPath request.body '$.applicationName'}}\",\"version\":\"{{jsonPath request.body '$.version'}}\",\"environment\":\"PROD\",\"deploymentId\":\"deploy-{{randomValue type='UUID' uppercase=false}}\"}"
       }
     },
     {

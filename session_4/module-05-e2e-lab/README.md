@@ -44,7 +44,8 @@ You are building an automated release agent for your enterprise. The agent **orc
 | Spring AI MCP Client | 1.0.0 — connects to Jira + Deployment MCP Servers |
 | Spring Boot Web | REST endpoint: `POST /release` |
 | Spring Security 6 | OAuth2 Resource Server — `/release` requires Bearer token |
-| WireMock | Jira mock on port 9001, Deployment API mock on port 9003 |
+| WireMock | Deployment API mock on port 9003 |
+| Jira MCP Server | Spring AI MCP Server with fixture data on port 9001 |
 | Keycloak | OAuth2 Authorization Server on port 8180 |
 | Module 04 MCP Server | Secure Deployment MCP Server on port 8084 |
 
@@ -59,7 +60,7 @@ User  ──POST /release──►  ReleaseIntegrationAgent (port 8085)
            │                                         │
            ▼ (SSE, public)                           ▼ (SSE, Bearer token relay)
   Jira MCP Server                        Secure Deployment MCP Server
-  (WireMock port 9001)                   (Module 04, port 8084)
+  (Spring AI, port 9001)                 (Module 04, port 8084)
            │                                         │
     jira_search_issues                        triggerDeployment
            │                                         │
@@ -92,7 +93,8 @@ cd /root/projects/apex-ai-trainings-v3/session_4
 docker compose up -d
 
 echo "=== Service Health Check ==="
-curl -sf http://localhost:9001/__admin/health  && echo "WireMock Jira:       OK" || echo "WireMock Jira:       FAIL"
+curl -sf http://localhost:9001/actuator/health  \
+  | jq .status | grep -q UP && echo "Jira MCP Server:     OK" || echo "Jira MCP Server:     FAIL"
 curl -sf http://localhost:9003/__admin/health  && echo "WireMock Deployment: OK" || echo "WireMock Deployment: FAIL"
 curl -sf http://localhost:8180/realms/workshop/.well-known/openid-configuration \
   | jq .issuer | grep -q workshop && echo "Keycloak:            OK" || echo "Keycloak:            FAIL"
@@ -102,7 +104,7 @@ curl -sf http://localhost:8084/actuator/health \
 
 **Expected:**
 ```
-WireMock Jira:         OK
+Jira MCP Server:       OK
 WireMock Deployment:   OK
 Keycloak:              OK
 Secure Deployment MCP: OK
@@ -209,7 +211,7 @@ echo "Token obtained (first 50 chars): ${TOKEN:0:50}..."
 
 ### Scenario 1 — Release 2.4 with Critical Bugs → BLOCKED
 
-The WireMock Jira mock returns 2 critical open bugs for release 2.4.
+The Jira MCP Server returns 2 critical open bugs for release 2.4.
 
 ```bash
 curl -s -X POST http://localhost:8085/release \
@@ -227,11 +229,26 @@ curl -s -X POST http://localhost:8085/release \
 ```json
 {
   "status": "BLOCKED",
+  "projectKey": "PROJ",
   "version": "2.4",
   "message": "Resolve 2 critical bug(s) before deploying release 2.4",
   "blockers": [
-    { "key": "PROJ-101", "summary": "NPE in payment processor when card token is null", "priority": "Critical" },
-    { "key": "PROJ-108", "summary": "Deadlock in session management under high concurrency", "priority": "Critical" }
+    {
+      "key": "PROJ-101",
+      "summary": "NPE in payment processor when card token is null",
+      "status": "Open",
+      "priority": "Critical",
+      "issuetype": "Bug",
+      "fixVersions": ["2.4"]
+    },
+    {
+      "key": "PROJ-108",
+      "summary": "Deadlock in session management under high concurrency",
+      "status": "In Progress",
+      "priority": "Critical",
+      "issuetype": "Bug",
+      "fixVersions": ["2.4"]
+    }
   ]
 }
 ```
@@ -258,10 +275,17 @@ curl -s -X POST http://localhost:8085/release \
 ```json
 {
   "status": "DEPLOYED",
-  "applicationName": "payment-service",
   "version": "3.0",
+  "applicationName": "payment-service",
   "environment": "DEV",
-  "message": "Successfully deployed payment-service 3.0 to DEV"
+  "message": "Successfully deployed payment-service 3.0 to DEV",
+  "deploymentDetails": {
+    "status": "DEPLOYED",
+    "applicationName": "payment-service",
+    "version": "3.0",
+    "environment": "DEV",
+    "deploymentId": "deploy-<uuid>"
+  }
 }
 ```
 
@@ -308,8 +332,9 @@ curl -s -X POST http://localhost:8084/confirm/$REQUEST_ID \
 {
   "approved": true,
   "requestId": "a1b2c3d4-...",
-  "approvedBy": "workshop-user",
-  "message": "Deployment approved. It will execute on the next retry."
+  "description": "Deploy payment-service 3.0 to PROD",
+  "approvedBy": "<your-username>",
+  "message": "Deployment approved. It will execute on the next LLM retry."
 }
 ```
 
@@ -325,9 +350,17 @@ curl -s -X POST http://localhost:8085/release \
 ```json
 {
   "status": "DEPLOYED",
-  "applicationName": "payment-service",
   "version": "3.0",
-  "environment": "PROD"
+  "applicationName": "payment-service",
+  "environment": "PROD",
+  "message": "Successfully deployed payment-service 3.0 to PROD",
+  "deploymentDetails": {
+    "status": "DEPLOYED",
+    "applicationName": "payment-service",
+    "version": "3.0",
+    "environment": "PROD",
+    "deploymentId": "deploy-<uuid>"
+  }
 }
 ```
 
@@ -391,7 +424,7 @@ Review what changes are needed to make this workshop solution production-ready:
 
 | Problem | Cause | Solution |
 |---|---|---|
-| Release agent returns "Jira search failed" immediately | WireMock Jira mock not running | `docker compose up -d wiremock-jira` → verify: `curl http://localhost:9001/__admin/health` |
+| Release agent returns "Jira search failed" immediately | Jira MCP Server not running | `docker compose up -d jira-mcp-server` → verify: `curl http://localhost:9001/actuator/health` |
 | Cannot connect to port 8084 | Module 04 MCP Server not running | `cd module-04-security && mvn spring-boot:run` |
 | PROD deployment never becomes `DEPLOYED` after approval | Agent does not auto-retry | This is by design — caller must retry. In production, use a Kafka/SQS event to trigger auto-retry. |
 | Token expired during multi-step scenario | Keycloak default 600s expiry | Re-run the token request: `TOKEN=$(curl -s ... \| jq -r '.access_token')` |

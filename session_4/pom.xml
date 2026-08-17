@@ -11,6 +11,7 @@
     <name>MCP Java Workshop - Parent</name>
 
     <modules>
+        <module>jira-mcp-server</module>
         <module>module-01-foundations</module>
         <module>module-02-mcp-client</module>
         <module>module-03-mcp-server</module>

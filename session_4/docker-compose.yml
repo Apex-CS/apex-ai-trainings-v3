@@ -2,17 +2,14 @@ version: "3.9"
 
 services:
 
-  # ─── WireMock: simulates Jira MCP Server (SSE transport) ───────────────────
-  wiremock-jira:
-    image: wiremock/wiremock:3.9.1
-    container_name: wiremock-jira
+  # ─── Jira MCP Server: Spring AI MCP Server with fixture data ──────────────
+  jira-mcp-server:
+    build:
+      context: ./jira-mcp-server
+      dockerfile: Dockerfile
+    container_name: jira-mcp-server
     ports:
-      - "9001:8080"
-    volumes:
-      - ./module-02-mcp-client/wiremock:/home/wiremock
-    command: >
-      --global-response-templating
-      --verbose
+      - "9001:9001"
     networks:
       - mcp-workshop
 
