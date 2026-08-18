@@ -8,6 +8,162 @@
 
 ---
 
+## What is the Model Context Protocol (MCP)?
+
+**MCP is a standardized, JSON-RPC 2.0-based protocol for secure, bidirectional communication between LLM applications (Claude, ChatGPT, etc.) and external systems.** It defines how clients and servers exchange structured messages to invoke tools, access resources, and retrieve prompt templates.
+
+### Key Principles
+
+- **Protocol, not a library:** MCP is a specification over HTTP/stdio/SSE. Any language can implement it.
+- **JSON-RPC 2.0 foundation:** Built on a proven, lightweight RPC standard with request ID tracking, error handling, and batch support.
+- **Three core primitives:**
+  - **Tools** — Functions the server exposes for the LLM to call (e.g., Calculator, Database Query, API Call)
+  - **Resources** — Read-only data the server provides to the LLM (e.g., Documentation, Configuration, File Contents)
+  - **Prompts** — Reusable prompt templates the server can inject into LLM conversations (e.g., System Instructions, Few-Shot Examples)
+- **Stateless and side-effect aware:** Tools can modify state (create files, update databases); LLMs must understand and handle the consequences.
+- **Sandbox-friendly:** Designed for deployment in containerized, resource-constrained environments (edge, local, cloud).
+
+---
+
+## What MCP is NOT
+
+| What it's NOT | What it IS instead |
+|---|---|
+| A replacement for REST APIs | A wire protocol for LLM-to-backend communication that wraps REST APIs |
+| A machine learning framework | A protocol layer that sits *on top of* LLMs and external tools |
+| A database query language | A mechanism for servers to expose custom functions to LLMs |
+| A chat protocol like WebSocket | A request-response protocol optimized for LLM tool invocations |
+| A credential manager | A transport mechanism; security is delegated to the transport layer (TLS, OIDC, etc.) |
+| Tied to Anthropic only | An open standard; Claude is one client; any LLM can be an MCP client |
+
+---
+
+## Transport Layer: stdio vs SSE (and HTTP)
+
+MCP is **protocol-agnostic** — it can run over any bidirectional transport. This module focuses on **stdio**; here's how transports differ:
+
+### stdio (Standard I/O)
+
+- **Use case:** Local, single-process servers; development; testing
+- **How it works:** Server reads JSON-RPC from stdin; writes responses to stdout
+- **Pros:** 
+  - Simplest to set up and debug
+  - Perfect for CLI tools and single-process deployments
+  - No network overhead
+- **Cons:**
+  - Not suitable for network deployment
+  - Cannot handle multiple concurrent clients (one process = one connection)
+- **Example:** `java -jar server.jar` with pipes to/from a client process
+- **Protocol:** plain JSON-RPC messages, line-delimited or framed
+
+### Server-Sent Events (SSE)
+
+- **Use case:** Web browser clients; lightweight push notifications; real-time dashboards
+- **How it works:** Client establishes HTTP POST for requests; server pushes responses and server-initiated messages via HTTP GET stream
+- **Pros:**
+  - Works over HTTP; firewall-friendly
+  - Server can push notifications without client request (streaming responses)
+  - Familiar to web developers
+- **Cons:**
+  - Higher latency than stdio
+  - Asymmetric channels (one-way SSE for server → client notifications)
+  - Requires HTTP infrastructure
+- **Example:** Browser MCP client connects to `http://server:3000/mcp`
+
+### HTTP (Traditional REST)
+
+- **Use case:** Standard web service integration; production deployments; load-balanced servers
+- **How it works:** Each `tools/call` becomes an HTTP POST request
+- **Pros:**
+  - Standard, widely understood
+  - Can scale horizontally with load balancers
+  - Rich ecosystem of auth, logging, monitoring
+- **Cons:**
+  - Higher latency per RPC call
+  - Polling required if server needs to push data
+  - More overhead than stdio
+- **Example:** `POST /mcp/tools/call` with JSON body
+
+### Transport Decision Matrix
+
+| Requirement | Best Choice |
+|---|---|
+| Local development, single process | **stdio** |
+| Browser-based client | **SSE** or **HTTP** |
+| Production service, multi-instance | **HTTP** |
+| Headless server, real-time push | **SSE** |
+| Edge/embedded deployment | **stdio** |
+
+---
+
+## JSON-RPC 2.0 Fundamentals
+
+Every MCP message is a JSON-RPC 2.0 call. Understanding the structure is essential to reading MCP Inspector logs.
+
+```json
+{
+  "jsonrpc": "2.0",           /* Always "2.0" — don't change */
+  "id": 42,                   /* Request ID: matches response for correlation */
+  "method": "tools/list",     /* Method name: tools/list, tools/call, resources/list, etc. */
+  "params": {                 /* Method parameters (optional) */
+    "name": "calculator",
+    "arguments": { "a": 10, "b": 5 }
+  }
+}
+```
+
+**Response format:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 42,                   /* Echoes the request ID */
+  "result": {                 /* Success: includes result key */
+    "content": [
+      { "type": "text", "text": "15" }
+    ],
+    "isError": false
+  }
+}
+```
+
+**Or error response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 42,
+  "error": {                  /* Failure: includes error key (protocol-level error) */
+    "code": -32600,
+    "message": "Invalid Request"
+  }
+}
+```
+
+> **Key distinction:** `result.isError: true` = tool ran but returned a logical error (e.g., division by zero). `error` object = protocol-level failure (e.g., malformed JSON, unknown method).
+
+---
+
+## Virtual Threads and Concurrency
+
+This module uses **Java 21 Virtual Threads** (Project Loom). MCP servers often need to handle concurrent tool calls (e.g., LLM calling `fetch_url()` and `run_query()` in parallel). Virtual Threads make this easy:
+
+- **Traditional threads:** Expensive (heavy memory). One per blocking I/O call. Max ~10,000 per JVM.
+- **Virtual Threads:** Cheap (lightweight). Millions can exist. Automatically scheduled on a small pool of carrier threads.
+
+```java
+// Virtual Thread (JDK 21+) — no explicit thread creation needed
+@Tool
+public String fetchUrl(@ToolParam String url) {
+    // This runs on a virtual thread; scales to 1M concurrent calls
+    return HttpClient.newHttpClient()
+        .send(HttpRequest.newBuilder().uri(URI.create(url)).build(), BodyHandlers.ofString())
+        .body();
+}
+```
+
+Each tool invocation is dispatched on a separate virtual thread. No thread pool management required. This is why MCP Servers in Java are so efficient.
+
+---
+
 ## Overview
 
 Build a minimal MCP Server in Java using Spring AI, expose Calculator and System-Info tools over **stdio transport**, then use **MCP Inspector** to observe every JSON-RPC message in real time. This practice exposes the "under the hood" mechanics before any abstraction hides them.
