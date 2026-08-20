@@ -10,7 +10,7 @@
 
 ## Overview
 
-A production Java service needs to query Jira for critical bugs before approving a release. Rather than hardcoding Jira's REST API, you'll connect to a **Jira MCP Server** (mocked with WireMock) using Spring AI's MCP Client over **SSE transport**. You'll discover tools at runtime, invoke them, and deserialize the JSON responses into typed Java DTOs.
+A production Java service needs to query Jira for critical bugs before approving a release. Rather than hardcoding Jira's REST API, you'll connect to a **Jira MCP Server** (implemented as a Spring Boot application) using Spring AI's MCP Client over **SSE transport**. You'll discover tools at runtime, invoke them, and deserialize the JSON responses into typed Java DTOs.
 
 ---
 
@@ -20,7 +20,7 @@ A production Java service needs to query Jira for critical bugs before approving
 |---|---|
 | Module 01 completed | Understand JSON-RPC basics |
 | Docker running | `docker ps` |
-| WireMock Jira mock started | `docker compose up -d wiremock-jira` |
+| Jira MCP Server started | `docker compose up -d jira-mcp-server` |
 
 ---
 
@@ -41,8 +41,8 @@ A production Java service needs to query Jira for critical bugs before approving
 |---|---|
 | Spring Boot | 3.3.5 (`spring-boot-starter-web`) |
 | Spring AI MCP Client | 1.0.0 (`spring-ai-mcp-client-spring-boot-starter`) |
+| Spring AI MCP Server | 1.0.0 — Jira implementation (`spring-ai-mcp-spring-boot-starter`) |
 | Jackson Databind | 2.17.x |
-| WireMock | 3.9.1 — mock Jira MCP Server |
 
 ---
 
@@ -68,71 +68,38 @@ SSE (Server-Sent Events) transport flow:
 
 ### Step 1 — Start the Jira MCP Mock Server
 
-WireMock simulates a Jira MCP Server that speaks the MCP SSE protocol. The mock responds to the MCP handshake and Jira-specific tool calls.
+A Spring Boot MCP Server simulates Jira and speaks the MCP SSE protocol. The server responds to the MCP handshake and Jira-specific tool calls.
 
 ```bash
 cd /root/projects/apex-ai-trainings-v3/session_4
-docker compose up -d wiremock-jira
+docker compose up -d jira-mcp-server
 
 # Verify it's up
-curl -s http://localhost:9001/__admin/mappings | jq '.mappings | length'
+
+
 ```
 
-**Expected output:** `7`
+**Expected output:** A JSON health check response with `"status":"UP"` (HTTP 200)
 
-> **Tip:** Inspect all stubs: `curl http://localhost:9001/__admin/mappings | jq`
+> **Tip:** View the server logs: `docker logs jira-mcp-server -f`
 
 ---
 
-### Step 2 — Review WireMock Stubs — How the Mock MCP Server Works
+### Step 2 — Review Jira MCP Server Implementation — How the Mock Server Works
 
-Examine [wiremock/mappings/jira-mcp-stubs.json](wiremock/mappings/jira-mcp-stubs.json). These stubs implement the full MCP SSE handshake protocol.
+The `jira-mcp-server` is a Spring Boot application that implements the MCP SSE protocol with Spring AI's MCP Server starter. Examine [jira-mcp-server/src](../jira-mcp-server/src) to see how it handles tool discovery and invocations.
 
-The `tools/list` stub returns two Jira tools:
+The server responds to `tools/list` with two Jira tools:
 
-```json
-{
-  "request": {
-    "method": "POST",
-    "url": "/mcp/message",
-    "bodyPatterns": [{ "matchesJsonPath": "$[?(@.method == 'tools/list')]" }]
-  },
-  "response": {
-    "status": 200,
-    "jsonBody": {
-      "jsonrpc": "2.0",
-      "id": "{{jsonPath request.body '$.id'}}",
-      "result": {
-        "tools": [
-          {
-            "name": "jira_get_issue",
-            "description": "Retrieves a Jira issue by its key (e.g. PROJ-123)",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "issueKey": { "type": "string", "description": "Jira issue key, e.g. PROJ-123" }
-              },
-              "required": ["issueKey"]
-            }
-          },
-          {
-            "name": "jira_search_issues",
-            "description": "Searches Jira issues using a JQL query string",
-            "inputSchema": {
-              "type": "object",
-              "properties": {
-                "jql":        { "type": "string"  },
-                "maxResults": { "type": "integer" }
-              },
-              "required": ["jql"]
-            }
-          }
-        ]
-      }
-    }
-  }
-}
-```
+- **`jira_get_issue`**: Retrieves a Jira issue by its key (e.g., PROJ-123)  
+  - Input: `issueKey` (string, required) — Jira issue key
+  - Output: JSON-serialized `JiraIssueDTO` with fields: `key`, `summary`, `status`, `priority`, `issuetype`, `assignee`, `fixVersions`
+
+- **`jira_search_issues`**: Searches Jira issues using a JQL query string  
+  - Input: `jql` (string, required), `maxResults` (integer, optional)
+  - Output: JSON-serialized list of `JiraIssueDTO`
+
+View the actual tool implementations in [jira-mcp-server/src/main/java](../jira-mcp-server/src/main/java) to see the `@McpFunction` annotations.
 
 ---
 
@@ -165,10 +132,12 @@ public class McpClientConfig {
 ```
 
 **Key concepts:**
-- `HttpClientSseClientTransport` uses Java 11+ `HttpClient` internally.
-- `client.initialize()` performs the MCP initialization handshake.
+- `HttpClientSseClientTransport` uses Java 11+ `HttpClient` and establishes a **persistent SSE connection**.
+- All JSON-RPC messages (requests and responses) are sent/received as SSE events on this single connection.
+- `client.initialize()` performs the MCP initialization handshake (exchanges `initialize` request/response).
 - The client is a **singleton** Spring bean — one connection per JVM process.
 - For multiple MCP servers, declare multiple `@Bean` methods with `@Qualifier`.
+- **Important:** Ensure the server is running and accessible on the configured URL before `initialize()` is called (see Troubleshooting).
 
 ---
 
@@ -267,77 +236,67 @@ Release 2.4 is BLOCKED — resolve critical bugs before deploying.
 
 ---
 
-### Step 7 — Inspect Raw SSE Traffic Manually
+### Step 7 — Understanding SSE Protocol Communication
 
-Open a second terminal and connect to the WireMock SSE endpoint to see what the server sends when a client connects:
+The `HttpClientSseClientTransport` establishes a **persistent SSE connection** and communicates bidirectionally:
+
+1. **Establish SSE connection** (GET `/sse`) — returns session ID
+2. **Send requests as SSE events** over the persistent connection
+3. **Receive responses as SSE events** on the same connection
+4. Connection stays open for the lifetime of the client
+
+**Optional: Inspect raw SSE events** (educational only):
 
 ```bash
-# Open SSE connection (Ctrl+C to close)
+# Terminal 1 — Open SSE connection (keep this running)
 curl -N -H 'Accept: text/event-stream' http://localhost:9001/sse
 ```
 
-**Expected SSE output:**
+**Expected output:**
 ```
-event: endpoint
-data: /mcp/message
-
-```
-
-In another terminal, manually send a `tools/list` request:
-
-```bash
-curl -s -X POST http://localhost:9001/mcp/message \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+id:1231db5a-729a-4b6f-b6e6-81b1370c381f
+event:endpoint
+data:/mcp/message?sessionId=1231db5a-729a-4b6f-b6e6-81b1370c381f
 ```
 
-> **Key concept:** The SSE endpoint sends two event types:
-> - `endpoint` — tells the client where to POST requests
-> - `message` — carries JSON-RPC responses back to the client
+> **Important:** Do NOT manually POST to the message endpoint — the transport expects bidirectional SSE communication. Manual POSTs will freeze waiting for a response. The transport handles all message routing automatically.
 
 ---
 
-### Step 8 — Test Error Handling — Unknown Issue Key
+### Step 8 — Test Error Handling in the Running Application
 
-The WireMock mock returns `isError: true` for unknown issue keys. Verify your client handles this gracefully.
+The client application (running from Step 6) already tests error scenarios. The `JiraMcpClientService` includes error handling for unknown issue keys:
 
-**JSON-RPC exchange:**
+**Example error scenario:**
 
-Request:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "method": "tools/call",
-  "params": {
-    "name": "jira_get_issue",
-    "arguments": { "issueKey": "PROJ-99999" }
-  }
+When calling `getIssue("PROJ-99999")` on an unknown key, the service:
+1. Sends `jira_get_issue` tool call with `issueKey=PROJ-99999`
+2. Receives response with `isError: true` and error message
+3. Throws `JiraMcpException` with the error details
+
+**To test manually, modify the demo code:**
+
+Edit [JiraDemoRunner.java](src/main/java/com/workshop/mcp/module02/JiraDemoRunner.java) and add:
+
+```java
+try {
+    var issue = jiraMcpClientService.getIssue("PROJ-99999");
+    System.out.println("ERROR: Should have thrown exception");
+} catch (JiraMcpException e) {
+    System.out.println("✓ Error handling works: " + e.getMessage());
 }
 ```
 
-Response from mock:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "result": {
-    "content": [
-      { "type": "text", "text": "Issue PROJ-99999 not found" }
-    ],
-    "isError": true
-  }
-}
-```
-
-Test it:
+Then rebuild and run:
 ```bash
-curl -s -X POST http://localhost:9001/mcp/message \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"jira_get_issue","arguments":{"issueKey":"PROJ-99999"}}}'
+mvn clean package -DskipTests
+mvn spring-boot:run
 ```
 
-**Expected client behavior:** `JiraMcpClientService.getIssue()` throws `JiraMcpException` with message `"Failed to fetch issue PROJ-99999: Issue PROJ-99999 not found"`.
+**Expected output:**
+```
+✓ Error handling works: Failed to fetch issue: Issue PROJ-99999 not found
+```
 
 ---
 
@@ -345,8 +304,10 @@ curl -s -X POST http://localhost:9001/mcp/message \
 
 | Problem | Cause | Solution |
 |---|---|---|
-| Connection refused to `localhost:9001` | WireMock container not running | `docker compose up -d wiremock-jira && docker logs wiremock-jira` |
-| `client.initialize()` throws timeout | SSE connection cannot be established | `curl -I http://localhost:9001/sse` — verify `Content-Type: text/event-stream` |
+| `TimeoutException: Did not observe any item or terminal signal within 20000ms` during app startup | jira-mcp-server not running or unreachable; URL misconfiguration | Verify: `docker compose up -d jira-mcp-server && curl http://localhost:9001/actuator/health` |
+| Connection refused to `localhost:9001` | jira-mcp-server container not running | `docker compose up -d jira-mcp-server && docker logs jira-mcp-server` |
+| Manual curl POST to `/mcp/message?sessionId=...` freezes | Transport expects persistent SSE connection, not one-off POSTs | Do not manually POST; the transport handles all communication. Test via the running application instead. |
+| `client.initialize()` throws timeout | SSE connection cannot be established | `curl -I http://localhost:9001/sse` — verify `Content-Type: text/event-stream` and status 200 |
 | DTO fields all `null` after deserialization | JSON field names don't match `@JsonProperty` | Log the raw text content: `log.debug("Raw: {}", extractText(result))` |
 
 ---
