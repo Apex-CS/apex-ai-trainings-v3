@@ -101,7 +101,7 @@ public class ReleaseIntegrationAgent {
             }
 
             String json = extractText(result);
-            return objectMapper.readValue(json, new TypeReference<List<JiraIssueDTO>>() {});
+            return deserializeJiraIssues(json);
 
         } catch (Exception e) {
             log.error("Jira MCP Client error: {}", e.getMessage(), e);
@@ -179,5 +179,11 @@ public class ReleaseIntegrationAgent {
                 .map(c -> ((McpSchema.TextContent) c).text())
                 .findFirst()
                 .orElse("{}");
+    }
+
+    private List<JiraIssueDTO> deserializeJiraIssues(String json) throws Exception {
+        JsonNode root = objectMapper.readTree(json);
+        String actualJson = root.isTextual() ? root.asText() : json;
+        return objectMapper.readValue(actualJson, new TypeReference<List<JiraIssueDTO>>() {});
     }
 }

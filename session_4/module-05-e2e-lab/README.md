@@ -384,12 +384,9 @@ curl -s -w '\nHTTP: %{http_code}' \
 Inspect the complete audit log from the PROD deployment flow:
 
 ```bash
-tail -50 /tmp/module04-audit.log | jq -sc '.' | jq '.[] | {
-  eventType,
-  toolName,
-  callerEmail,
-  extra: (del(.timestamp, .eventType, .toolName, .callerSub, .callerEmail, .callerUsername))
-}'
+# Audit log lines are prefixed by Logback — strip the prefix before piping to jq
+sed -n 's/.*AUDIT[[:space:]]*: //p' /tmp/module04-audit.log | tail -20 | jq -s '.' | \
+  jq '.[] | {eventType, toolName, callerSub}'
 ```
 
 **Expected event sequence for Scenario 3:**

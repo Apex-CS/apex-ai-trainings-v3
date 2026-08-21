@@ -1,11 +1,8 @@
 package com.workshop.mcp.module04.tools;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.workshop.mcp.module04.audit.AuditLogService;
-import com.workshop.mcp.module04.security.CallerIdentity;
-import com.workshop.mcp.module04.security.HumanInTheLoopGuard;
-import com.workshop.mcp.module04.security.InputSanitizer;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import java.util.Map;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -16,7 +13,13 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.workshop.mcp.module04.audit.AuditLogService;
+import com.workshop.mcp.module04.security.CallerIdentity;
+import com.workshop.mcp.module04.security.HumanInTheLoopGuard;
+import com.workshop.mcp.module04.security.InputSanitizer;
+
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 
 /**
  * Secure Deployment MCP Tools — Module 04.
@@ -90,30 +93,43 @@ public class SecureDeploymentTools {
 
         // Layer 4: Human-in-the-loop for PROD deployments
         if ("PROD".equalsIgnoreCase(environment)) {
-            String requestId = humanGuard.requireApproval(
-                    "Deploy %s %s to PROD".formatted(applicationName, version),
-                    identity.username());
-            auditLog.approvalRequired("triggerDeployment", identity, requestId);
+            String description = "Deploy %s %s to PROD".formatted(applicationName, version);
+
+            // If already approved for the same user + action, consume approval and deploy.
+            Optional<String> approvedRequestId = humanGuard.findRequestId(
+                description, identity.username(), HumanInTheLoopGuard.ApprovalStatus.APPROVED);
+            if (approvedRequestId.isPresent()) {
+            try {
+                String result = executeDeployment(applicationName, version, environment, identity.token());
+                humanGuard.remove(approvedRequestId.get());
+                auditLog.toolCompleted("triggerDeployment", identity, "SUCCESS");
+                return result;
+            } catch (Exception e) {
+                auditLog.toolFailed("triggerDeployment", identity, e.getClass().getSimpleName(), e.getMessage());
+                return toErrorJson("Deployment API error: " + e.getMessage());
+            }
+            }
+
+            // Reuse the same pending request for idempotent retries before approval.
+            Optional<String> existingPendingRequestId = humanGuard.findRequestId(
+                description, identity.username(), HumanInTheLoopGuard.ApprovalStatus.PENDING);
+            String requestId = existingPendingRequestId.orElseGet(() -> {
+            String created = humanGuard.requireApproval(description, identity.username());
+            auditLog.approvalRequired("triggerDeployment", identity, created);
+            return created;
+            });
 
             return toJson(Map.of(
-                    "status", "PENDING_APPROVAL",
-                    "message", "PROD deployment requires human approval. Please visit the approval URL.",
-                    "requestId", requestId,
-                    "approvalUrl", "/confirm/" + requestId,
-                    "requestedBy", identity.username()));
+                "status", "PENDING_APPROVAL",
+                "message", "PROD deployment requires human approval. Please visit the approval URL.",
+                "requestId", requestId,
+                "approvalUrl", "/confirm/" + requestId,
+                "requestedBy", identity.username()));
         }
 
         // Execute deployment — forward caller's token to downstream API (Token Relay)
         try {
-            String result = deploymentClient.post()
-                    .uri("/api/deployments")
-                    .header("Authorization", "Bearer " + identity.token())
-                    .body(Map.of(
-                            "applicationName", applicationName,
-                            "version", version,
-                            "environment", environment))
-                    .retrieve()
-                    .body(String.class);
+            String result = executeDeployment(applicationName, version, environment, identity.token());
 
             auditLog.toolCompleted("triggerDeployment", identity, "SUCCESS");
             return result;
@@ -183,5 +199,17 @@ public class SecureDeploymentTools {
 
     private String toErrorJson(String message) {
         return toJson(Map.of("error", message));
+    }
+
+    private String executeDeployment(String applicationName, String version, String environment, String bearerToken) {
+        return deploymentClient.post()
+                .uri("/api/deployments")
+                .header("Authorization", "Bearer " + bearerToken)
+                .body(Map.of(
+                        "applicationName", applicationName,
+                        "version", version,
+                        "environment", environment))
+                .retrieve()
+                .body(String.class);
     }
 }

@@ -1,11 +1,12 @@
 package com.workshop.mcp.module04.security;
 
-import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.stereotype.Component;
 
 /**
  * Human-in-the-Loop Guard — Pending Approval State Machine.
@@ -77,6 +78,25 @@ public class HumanInTheLoopGuard {
 
     public PendingApproval getPending(String requestId) {
         return pending.get(requestId);
+    }
+
+    /**
+     * Finds a matching request for the same action + requester and desired status.
+     */
+    public Optional<String> findRequestId(String description, String requestedBy, ApprovalStatus status) {
+        return pending.values().stream()
+                .filter(p -> p.status() == status)
+                .filter(p -> p.description().equals(description))
+                .filter(p -> p.requestedBy().equals(requestedBy))
+                .map(PendingApproval::requestId)
+                .findFirst();
+    }
+
+    /**
+     * Removes an approval record after it has been consumed.
+     */
+    public void remove(String requestId) {
+        pending.remove(requestId);
     }
 
     // ─── Domain types ─────────────────────────────────────────────────────────
