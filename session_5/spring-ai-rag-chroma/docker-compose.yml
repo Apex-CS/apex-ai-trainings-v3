@@ -1,0 +1,20 @@
+
+
+services:
+
+  chroma:
+    image: chromadb/chroma:1.5.9
+    container_name: chroma
+    ports:
+      - "8000:8000"
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  ollama:
