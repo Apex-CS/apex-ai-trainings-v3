@@ -14,28 +14,43 @@ public class RagConfig {
 
   @Bean
   public ChromaApi chromaApi(
-      RestClient.Builder restClientBuilder,
-      ObjectMapper objectMapper) {
+          RestClient.Builder restClientBuilder,
+          ObjectMapper objectMapper) {
 
     return new ChromaApi(
-        "http://localhost:8000",
-        restClientBuilder,
-        objectMapper
+            "http://localhost:8000",
+            restClientBuilder,
+            objectMapper
     );
   }
 
   @Bean
   public VectorStore vectorStore(
-      ChromaApi chromaApi,
-      EmbeddingModel embeddingModel) {
+          ChromaApi chromaApi,
+          EmbeddingModel embeddingModel) {
 
     return ChromaVectorStore.builder(
-            chromaApi,
-            embeddingModel)
-        .tenantName("default_tenant")
-        .databaseName("default_database")
-        .collectionName("demo-rag")
-        .initializeSchema(false)
-        .build();
+                    chromaApi,
+                    embeddingModel)
+            .tenantName("default_tenant")
+            .databaseName("default_database")
+            .collectionName("demo-rag")
+            .initializeSchema(false)
+            .build();
+  }
+
+  @Bean("fastShowVectorStore")
+  public VectorStore fastShowVectorStore(
+          ChromaApi chromaApi,
+          EmbeddingModel embeddingModel) {
+
+    return ChromaVectorStore.builder(
+                    chromaApi,
+                    embeddingModel)
+            .tenantName("default_tenant")
+            .databaseName("default_database")
+            .collectionName("FastShow-collection")
+            .initializeSchema(false)
+            .build();
   }
 }
