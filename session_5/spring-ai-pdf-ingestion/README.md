@@ -146,7 +146,7 @@ Started PdfIngestionApplication
 Open:
 
 ```text
-http://localhost:8080/swagger-ui/index.html
+http://localhost:7071/swagger-ui/index.html
 ```
 
 ---
