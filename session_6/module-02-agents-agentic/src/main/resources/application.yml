@@ -1,0 +1,35 @@
+server:
+  port: 8086
+
+spring:
+  config:
+    import: optional:file:.env[.properties],optional:file:module-06-agents-agentic/.env[.properties]
+  application:
+    name: module-06-agents-agentic
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+concierge:
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    chat-model: ${GEMINI_CHAT_MODEL:gemini-3.5-flash}
+    fallback-chat-model: ${GEMINI_FALLBACK_CHAT_MODEL:gemini-3.6-flash}
+    second-fallback-chat-model: ${GEMINI_SECOND_FALLBACK_CHAT_MODEL:gemini-3.7-flash}
+    embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+    vision-model: ${GEMINI_VISION_MODEL:gemini-3.5-flash}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:120}
+    max-retries: ${GEMINI_MAX_RETRIES:3}
+  chat-memory:
+    window-size: 10
+  guardrails:
+    max-recipe-retries: 2
+  ui:
+    port: ${UI_PORT:8501}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
