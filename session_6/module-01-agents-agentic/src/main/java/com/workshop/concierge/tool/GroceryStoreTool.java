@@ -4,8 +4,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import dev.langchain4j.agent.tool.Tool;
@@ -16,8 +14,6 @@ import dev.langchain4j.agent.tool.Tool;
  */
 @Component
 public class GroceryStoreTool {
-
-    private static final Logger log = LoggerFactory.getLogger(GroceryStoreTool.class);
 
     private static final Map<String, Double> KNOWN_PRICES = Map.of(
             "chicken breast", 6.99,
@@ -36,9 +32,7 @@ public class GroceryStoreTool {
         String key = item == null ? "" : item.trim().toLowerCase(Locale.ROOT);
         double price = KNOWN_PRICES.getOrDefault(key, roundToCents(ThreadLocalRandom.current().nextDouble(1.5, 12.0)));
         boolean inStock = ThreadLocalRandom.current().nextInt(100) < 85;
-        String result = "item=%s, price=$%.2f, inStock=%s".formatted(item, price, inStock);
-        log.info("[GroceryStoreTool] {}", result);
-        return result;
+        return "item=%s, price=$%.2f, inStock=%s".formatted(item, price, inStock);
     }
 
     private double roundToCents(double value) {

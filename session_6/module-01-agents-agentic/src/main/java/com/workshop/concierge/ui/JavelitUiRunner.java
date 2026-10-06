@@ -2,6 +2,7 @@ package com.workshop.concierge.ui;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +89,10 @@ public class JavelitUiRunner implements ApplicationRunner {
                 }
             } catch (Exception e) {
                 log.error("Inventory scan failed", e);
-                Jt.sessionState().put("lastInventoryError", e.getMessage());
+                String errorText = Optional.ofNullable(e.getMessage())
+                        .filter(msg -> !msg.isBlank())
+                        .orElse("Unknown error while scanning inventory");
+                Jt.sessionState().put("lastInventoryError", errorText);
             }
         }
 
@@ -151,10 +155,13 @@ public class JavelitUiRunner implements ApplicationRunner {
                         new TargetMacros(calories, protein), days);
                 MealPlanResponse response = orchestrator.generateMealPlan(request);
                 Jt.sessionState().put("lastMealPlan", response);
-                Jt.sessionState().put("lastMealPlanError", null);
+                Jt.sessionState().put("lastMealPlanError", "");
             } catch (Exception e) {
                 log.error("Meal plan generation failed", e);
-                Jt.sessionState().put("lastMealPlanError", e.getMessage());
+                String errorText = Optional.ofNullable(e.getMessage())
+                        .filter(msg -> !msg.isBlank())
+                        .orElse("Unknown error while generating meal plan");
+                Jt.sessionState().put("lastMealPlanError", errorText);
             }
         }
 

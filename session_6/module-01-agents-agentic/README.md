@@ -68,6 +68,56 @@ Safety is not optional in an agentic system. The app includes:
 
 This is a classic example of “LLM output must be checked before it is accepted.”
 
+### Agent Interaction Diagram
+
+The following diagram shows how requests move through the supervisor, memory, specialized agents, PII filtering, and output guardrails:
+
+```mermaid
+flowchart TD
+  Client[Client or Javelit UI]
+  InventoryEndpoint[Inventory endpoint]
+  MealPlanEndpoint[Meal plan endpoint]
+  Supervisor[SupervisorOrchestrator]
+  PII[PiiSensitiveFilter<br/>Redact cards, CVV, addresses, email, phone]
+  Memory[LongTermMemoryService<br/>User preferences and allergies]
+  SessionMemory[Short-term chat memory<br/>MessageWindowChatMemory]
+  Vision[VisionInventoryAgent]
+  VisionFallback[GeminiVisionHttpClient<br/>Fallback vision call]
+  Nutrition[NutritionistAgent]
+  Recipe[RecipeGroceryAgent]
+  Tools[GroceryStoreTool<br/>RecipeDatabaseTool]
+  Allergy[AllergyGuardrail]
+  Retry{Recipe safe?}
+  Response[Sanitized response<br/>InventoryScanResult or MealPlanResponse]
+
+  Client --> InventoryEndpoint
+  Client --> MealPlanEndpoint
+  InventoryEndpoint --> Supervisor
+  MealPlanEndpoint --> Supervisor
+
+  Supervisor --> PII
+  PII --> SessionMemory
+  Supervisor --> Memory
+
+  Supervisor -->|Inventory photo or text| Vision
+  Vision -->|Transient provider failure| VisionFallback
+  Vision --> Response
+  VisionFallback --> Response
+
+  Supervisor -->|Goals, macros, restrictions| Nutrition
+  Nutrition --> Recipe
+  Memory --> Nutrition
+  Memory --> Recipe
+  SessionMemory --> Nutrition
+  SessionMemory --> Recipe
+  Recipe --> Tools
+  Recipe --> Allergy
+  Allergy --> Retry
+  Retry -->|No| Recipe
+  Retry -->|Yes| Response
+  Response --> Client
+```
+
 ---
 
 ## Core Runtime Flow
